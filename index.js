@@ -232,7 +232,9 @@ client.once('ready', () => {
     console.log("🔥 BOT ONLINE!");
 });
 
-client.login(TOKEN);
+client.login(TOKEN)
+  .then(() => console.log("🔑 Login realizado"))
+  .catch(err => console.error("❌ ERRO LOGIN:", err));
 
 // ===== SERVIDOR PRA RENDER
 const PORT = process.env.PORT || 3000;
