@@ -10,7 +10,10 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  Events
+  Events,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require("discord.js");
 
 const client = new Client({
@@ -51,44 +54,67 @@ function loadGroups() {
 /* ================= UTIL ================= */
 
 function getEmoji(roleName){
+
   const name = roleName.toLowerCase();
 
-  if(name.includes("tank")) return "🛡️";
-  if(name.includes("healer")) return "💚";
-  if(name.includes("dps")) return "⚔️";
+  if(name.includes("incubus")) return "<:Incubus:1479601055816749212>";
+  if(name.includes("aguia")) return "<:aguia:1479601119612240003>";
+  if(name.includes("chama")) return "<:chamasombra:1479601382318280926>";
+  if(name.includes("dps")) return "<:dps:1479601155582459904>";
+  if(name.includes("foice")) return "<:foice:1479601139338186834>";
+  if(name.includes("fulgurante")) return "<:fulgurante:1479601175157407907>";
+  if(name.includes("healer")) return "<:healer:1479601216831885512>";
+  if(name.includes("mainhealer")) return "<:mainhealer:1479600899067347070>";
+  if(name.includes("maintank")) return "<:maintank:1479600981342949536>";
+  if(name.includes("raizbm")) return "<:raizbm:1479601235014320201>";
+  if(name.includes("oculto")) return "<:oculto:1479601337367789621>";
+  if(name.includes("offtank")) return "<:offtank:1479601014440067082>";
+  if(name.includes("paratempo")) return "<:paratempo:1479601362231886007>";
+  if(name.includes("prisma")) return "<:prisma:1479601196938428597>";
+  if(name.includes("ptheal")) return "<:ptheal:1479601036153983058>";
+  if(name.includes("quebrareinos")) return "<:quebrareinos:1479601271584325633>";
+  if(name.includes("silence")) return "<:silence:1479601096644104376>";
+  if(name.includes("uivo")) return "<:uivo:1479601081544736830>";
+  if(name.includes("tank")) return "<:tank:1479709733559730277>";
+  if(name.includes("badon")) return "<:badon:1479710170132119552>";
+  if(name.includes("raizferrea")) return "<:raizferrea:1480898476324819035>";
+  if(name.includes("arcolongo")) return "<:arcolongo:1480899757189763233>";
+  if(name.includes("susurante")) return "<:susurante:1480899728748314686>";
+  if(name.includes("furabruma")) return "<:furabruma:1480899700549877791>";
+  if(name.includes("bruxo")) return "<:bruxo:1487148891928264735>";
 
   return "⚔️";
 }
 
-// 🔥 SEM LIMITE
 function parseRoles(input) {
   const roles = {};
   const parts = input.split(",");
-
   for (const p of parts) {
-    const name = p.trim();
-    if (name.length > 0) {
-      roles[name] = { name };
+    const match = p.trim().match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const qty = parseInt(match[1]);
+      const name = match[2].trim();
+      roles[name] = { name, limit: qty };
     }
   }
-
   return roles;
 }
 
 function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
-  return new Date(y, m - 1, d, h, min);
+  return new Date(Date.UTC(y, m - 1, d, h + 3, min));
 }
 
 function formatDate(d) {
-  return d.toLocaleDateString("pt-BR");
+  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
 function formatTime(d) {
   return d.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo"
   });
 }
 
@@ -100,7 +126,7 @@ function buildEmbed(group) {
     .setColor(0x5865F2)
     .setDescription(
       `📅 Data: ${formatDate(group.startDate)}\n` +
-      `🕒 Horário: ${formatTime(group.startDate)}\n` +
+      `🕒 Horário: ${formatTime(group.startDate)} BR\n` +
       `📝 ${group.description}\n\n` +
       `👥 Total: ${group.total}`
     );
@@ -108,11 +134,12 @@ function buildEmbed(group) {
   for (const key in group.roles) {
     const role = group.roles[key];
     const emoji = getEmoji(role.name);
+
     const members =
       group.members[key].map(u => `<@${u.id}>`).join("\n") || "—";
 
     embed.addFields({
-      name: `${emoji} ${role.name} (${group.members[key].length})`,
+      name: `${emoji} ${role.name} (${group.members[key].length}/${role.limit})`,
       value: members,
       inline: true
     });
@@ -179,9 +206,9 @@ client.once(Events.ClientReady, async () => {
       .setDescription("Criar grupo de conteúdo")
       .addStringOption(o=>o.setName("tipo").setDescription("Tipo").setRequired(true))
       .addIntegerOption(o=>o.setName("jogadores").setDescription("Total jogadores").setRequired(true))
-      .addStringOption(o=>o.setName("classes").setDescription("tank, healer, dps").setRequired(true))
+      .addStringOption(o=>o.setName("classes").setDescription("1 tank, healer, dps").setRequired(true))
       .addStringOption(o=>o.setName("data").setDescription("DD/MM/AAAA").setRequired(true))
-      .addStringOption(o=>o.setName("horario").setDescription("HH:MM").setRequired(true))
+      .addStringOption(o=>o.setName("horario").setDescription("HH:MM UTC-3").setRequired(true))
       .addStringOption(o=>o.setName("descricao").setDescription("Descrição")),
 
     new SlashCommandBuilder()
@@ -189,7 +216,17 @@ client.once(Events.ClientReady, async () => {
       .setDescription("Calcular divisão de loot")
       .addIntegerOption(o=>o.setName("loot").setDescription("Valor total").setRequired(true))
       .addIntegerOption(o=>o.setName("jogadores").setDescription("Quantidade jogadores"))
-      .addStringOption(o=>o.setName("mencoes").setDescription("@user1 @user2"))
+      .addStringOption(o=>o.setName("mencoes").setDescription("@user1 @user2")),
+
+    /* ================= NOVO ================= */
+    new SlashCommandBuilder()
+      .setName("remover")
+      .setDescription("Remover jogador do grupo")
+      .addUserOption(o =>
+        o.setName("usuario")
+        .setDescription("Usuário a remover")
+        .setRequired(true)
+      )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -202,15 +239,11 @@ client.once(Events.ClientReady, async () => {
 
 client.on("interactionCreate", async i => {
 
-  /* ===== SLASH COMMANDS ===== */
-
   if (i.isChatInputCommand()) {
 
     if (i.commandName === "criar") {
 
       const roles = parseRoles(i.options.getString("classes"));
-      if (!Object.keys(roles).length)
-        return i.reply({ content: "Formato inválido.", ephemeral: true });
 
       const members = {};
       for (const r in roles) members[r] = [];
@@ -241,58 +274,50 @@ client.on("interactionCreate", async i => {
     if (i.commandName === "divisao") {
 
       const loot = i.options.getInteger("loot");
-      let jogadores = i.options.getInteger("jogadores");
-      const mencoes = i.options.getString("mencoes");
-
-      let listaMencoes = [];
-      let quantidadeMencoes = 0;
-
-      if (mencoes) {
-        const matches = mencoes.match(/<@!?(\d+)>/g);
-        if (matches) {
-          listaMencoes = matches;
-          quantidadeMencoes = matches.length;
-        }
-      }
-
-      if (jogadores && quantidadeMencoes) {
-        jogadores = Math.max(jogadores, quantidadeMencoes);
-      } else if (!jogadores && quantidadeMencoes) {
-        jogadores = quantidadeMencoes;
-      }
-
-      if (!jogadores || jogadores <= 0) {
-        return i.reply({
-          content: "❌ Informe jogadores ou menções.",
-          ephemeral: true
-        });
-      }
+      const jogadores = i.options.getInteger("jogadores") || 1;
 
       const valor = Math.floor(loot / jogadores);
 
-      const embed = new EmbedBuilder()
-        .setTitle("💰 Divisão de Loot")
-        .setColor(0x00FF00)
-        .addFields(
-          { name: "💰 Loot", value: loot.toLocaleString("pt-BR"), inline: true },
-          { name: "👥 Jogadores", value: jogadores.toString(), inline: true },
-          { name: "💎 Cada um recebe", value: valor.toLocaleString("pt-BR") }
-        );
+      return i.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("💰 Divisão")
+            .addFields(
+              { name: "Loot", value: String(loot) },
+              { name: "Jogadores", value: String(jogadores) },
+              { name: "Cada um", value: String(valor) }
+            )
+        ]
+      });
+    }
 
-      if (listaMencoes.length) {
-        embed.addFields({
-          name: "👤 Participantes",
-          value: listaMencoes.join(" ")
-        });
+    /* ================= REMOVER ================= */
+    if (i.commandName === "remover") {
+
+      const user = i.options.getUser("usuario");
+
+      const group = [...groups.values()].find(g =>
+        Object.values(g.members).flat().some(u => u.id === user.id)
+      );
+
+      if (!group)
+        return i.reply({ content: "Usuário não está em grupo.", ephemeral: true });
+
+      if (i.user.id !== group.creatorId)
+        return i.reply({ content: "❌ Só o criador pode remover.", ephemeral: true });
+
+      for (const r in group.members) {
+        group.members[r] = group.members[r].filter(u => u.id !== user.id);
       }
 
-      return i.reply({ embeds: [embed] });
+      saveGroups();
+
+      return i.reply({ content: "❌ Usuário removido com sucesso." });
     }
   }
 
-  /* ===== BOTÕES ===== */
-
   if (i.isButton()) {
+
     const group = groups.get(i.message.id);
     if (!group)
       return i.reply({ content: "Evento expirado.", ephemeral: true });
@@ -314,23 +339,14 @@ client.on("interactionCreate", async i => {
 
     if (i.customId === "ping_all") {
 
-      if (i.user.id !== group.creatorId) {
-        return i.reply({
-          content: "❌ Apenas o criador do evento pode usar o ping.",
-          ephemeral: true
-        });
-      }
+      if (i.user.id !== group.creatorId)
+        return i.reply({ content: "❌ Apenas o criador pode usar.", ephemeral: true });
 
       const mentions = [];
-
       for (const r in group.members)
         group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
 
-      if (!mentions.length)
-        return i.reply({ content: "⚠️ Ninguém no grupo.", ephemeral: true });
-
-      await i.reply({ content: mentions.join(" ") });
-      return;
+      return i.reply({ content: mentions.join(" ") || "Vazio" });
     }
 
     const role = i.customId.replace("join_", "");
@@ -350,7 +366,6 @@ client.on("interactionCreate", async i => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
 
 // ================= SERVIDOR WEB PARA RENDER =================
 const express = require("express");
