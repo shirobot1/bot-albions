@@ -126,7 +126,7 @@ function buildEmbed(group) {
     .setColor(0x5865F2)
     .setDescription(
       `📅 Data: ${formatDate(group.startDate)}\n` +
-      `🕒 Horário: ${formatTime(group.startDate)} UTC-3\n` +
+      `🕒 Horário: ${formatTime(group.startDate)} BR\n` +
       `📝 ${group.description}\n\n` +
       `👥 Total: ${group.total}`
     );
