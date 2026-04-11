@@ -10,10 +10,7 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  Events,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle
+  Events
 } = require("discord.js");
 
 const client = new Client({
@@ -54,34 +51,11 @@ function loadGroups() {
 /* ================= UTIL ================= */
 
 function getEmoji(roleName){
-
   const name = roleName.toLowerCase();
 
-  if(name.includes("incubus")) return "<:Incubus:1479601055816749212>";
-  if(name.includes("aguia")) return "<:aguia:1479601119612240003>";
-  if(name.includes("chama")) return "<:chamasombra:1479601382318280926>";
-  if(name.includes("dps")) return "<:dps:1479601155582459904>";
-  if(name.includes("foice")) return "<:foice:1479601139338186834>";
-  if(name.includes("fulgurante")) return "<:fulgurante:1479601175157407907>";
-  if(name.includes("healer")) return "<:healer:1479601216831885512>";
-  if(name.includes("mainhealer")) return "<:mainhealer:1479600899067347070>";
-  if(name.includes("maintank")) return "<:maintank:1479600981342949536>";
-  if(name.includes("raizbm")) return "<:raizbm:1479601235014320201>";
-  if(name.includes("oculto")) return "<:oculto:1479601337367789621>";
-  if(name.includes("offtank")) return "<:offtank:1479601014440067082>";
-  if(name.includes("paratempo")) return "<:paratempo:1479601362231886007>";
-  if(name.includes("prisma")) return "<:prisma:1479601196938428597>";
-  if(name.includes("ptheal")) return "<:ptheal:1479601036153983058>";
-  if(name.includes("quebrareinos")) return "<:quebrareinos:1479601271584325633>";
-  if(name.includes("silence")) return "<:silence:1479601096644104376>";
-  if(name.includes("uivo")) return "<:uivo:1479601081544736830>";
-  if(name.includes("tank")) return "<:tank:1479709733559730277>";
-  if(name.includes("badon")) return "<:badon:1479710170132119552>";
-  if(name.includes("raizferrea")) return "<:raizferrea:1480898476324819035>";
-  if(name.includes("arcolongo")) return "<:arcolongo:1480899757189763233>";
-  if(name.includes("susurante")) return "<:susurante:1480899728748314686>";
-  if(name.includes("furabruma")) return "<:furabruma:1480899700549877791>";
-  if(name.includes("bruxo")) return "<:bruxo:1487148891928264735>";
+  if(name.includes("tank")) return "🛡️";
+  if(name.includes("healer")) return "💚";
+  if(name.includes("dps")) return "⚔️";
 
   return "⚔️";
 }
@@ -108,14 +82,13 @@ function parseDateTime(dateStr, timeStr) {
 }
 
 function formatDate(d) {
-  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  return d.toLocaleDateString("pt-BR");
 }
 
 function formatTime(d) {
   return d.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo"
+    minute: "2-digit"
   });
 }
 
@@ -127,7 +100,7 @@ function buildEmbed(group) {
     .setColor(0x5865F2)
     .setDescription(
       `📅 Data: ${formatDate(group.startDate)}\n` +
-      `🕒 Horário: ${formatTime(group.startDate)} BR\n` +
+      `🕒 Horário: ${formatTime(group.startDate)}\n` +
       `📝 ${group.description}\n\n` +
       `👥 Total: ${group.total}`
     );
@@ -164,8 +137,8 @@ function buildButtons(group) {
     allButtons.push(
       new ButtonBuilder()
         .setCustomId("join_" + key)
-        .setEmoji(emoji) 
-        .setLabel(role.name) 
+        .setEmoji(emoji)
+        .setLabel(role.name)
         .setStyle(ButtonStyle.Primary)
     );
   }
@@ -199,11 +172,125 @@ function buildButtons(group) {
 client.once(Events.ClientReady, async () => {
   console.log(`Bot online como ${client.user.tag}`);
   loadGroups();
+
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("criar")
+      .setDescription("Criar grupo de conteúdo")
+      .addStringOption(o=>o.setName("tipo").setDescription("Tipo").setRequired(true))
+      .addIntegerOption(o=>o.setName("jogadores").setDescription("Total jogadores").setRequired(true))
+      .addStringOption(o=>o.setName("classes").setDescription("tank, healer, dps").setRequired(true))
+      .addStringOption(o=>o.setName("data").setDescription("DD/MM/AAAA").setRequired(true))
+      .addStringOption(o=>o.setName("horario").setDescription("HH:MM").setRequired(true))
+      .addStringOption(o=>o.setName("descricao").setDescription("Descrição")),
+
+    new SlashCommandBuilder()
+      .setName("divisao")
+      .setDescription("Calcular divisão de loot")
+      .addIntegerOption(o=>o.setName("loot").setDescription("Valor total").setRequired(true))
+      .addIntegerOption(o=>o.setName("jogadores").setDescription("Quantidade jogadores"))
+      .addStringOption(o=>o.setName("mencoes").setDescription("@user1 @user2"))
+  ].map(c => c.toJSON());
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+
+  console.log("Comandos registrados.");
 });
 
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
+
+  /* ===== SLASH COMMANDS ===== */
+
+  if (i.isChatInputCommand()) {
+
+    if (i.commandName === "criar") {
+
+      const roles = parseRoles(i.options.getString("classes"));
+      if (!Object.keys(roles).length)
+        return i.reply({ content: "Formato inválido.", ephemeral: true });
+
+      const members = {};
+      for (const r in roles) members[r] = [];
+
+      const group = {
+        title: i.options.getString("tipo"),
+        total: i.options.getInteger("jogadores"),
+        roles,
+        members,
+        description: i.options.getString("descricao") || "Sem descrição",
+        startDate: parseDateTime(
+          i.options.getString("data"),
+          i.options.getString("horario")
+        ),
+        creatorId: i.user.id
+      };
+
+      const msg = await i.reply({
+        embeds: [buildEmbed(group)],
+        components: buildButtons(group),
+        fetchReply: true
+      });
+
+      groups.set(msg.id, group);
+      saveGroups();
+    }
+
+    if (i.commandName === "divisao") {
+
+      const loot = i.options.getInteger("loot");
+      let jogadores = i.options.getInteger("jogadores");
+      const mencoes = i.options.getString("mencoes");
+
+      let listaMencoes = [];
+      let quantidadeMencoes = 0;
+
+      if (mencoes) {
+        const matches = mencoes.match(/<@!?(\d+)>/g);
+        if (matches) {
+          listaMencoes = matches;
+          quantidadeMencoes = matches.length;
+        }
+      }
+
+      if (jogadores && quantidadeMencoes) {
+        jogadores = Math.max(jogadores, quantidadeMencoes);
+      } else if (!jogadores && quantidadeMencoes) {
+        jogadores = quantidadeMencoes;
+      }
+
+      if (!jogadores || jogadores <= 0) {
+        return i.reply({
+          content: "❌ Informe jogadores ou menções.",
+          ephemeral: true
+        });
+      }
+
+      const valor = Math.floor(loot / jogadores);
+
+      const embed = new EmbedBuilder()
+        .setTitle("💰 Divisão de Loot")
+        .setColor(0x00FF00)
+        .addFields(
+          { name: "💰 Loot", value: loot.toLocaleString("pt-BR"), inline: true },
+          { name: "👥 Jogadores", value: jogadores.toString(), inline: true },
+          { name: "💎 Cada um recebe", value: valor.toLocaleString("pt-BR") }
+        );
+
+      if (listaMencoes.length) {
+        embed.addFields({
+          name: "👤 Participantes",
+          value: listaMencoes.join(" ")
+        });
+      }
+
+      return i.reply({ embeds: [embed] });
+    }
+  }
+
+  /* ===== BOTÕES ===== */
 
   if (i.isButton()) {
     const group = groups.get(i.message.id);
@@ -236,21 +323,13 @@ client.on("interactionCreate", async i => {
 
       const mentions = [];
 
-      for (const r in group.members) {
+      for (const r in group.members)
         group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
-      }
 
-      if (!mentions.length) {
-        return i.reply({
-          content: "⚠️ Ninguém no grupo.",
-          ephemeral: true
-        });
-      }
+      if (!mentions.length)
+        return i.reply({ content: "⚠️ Ninguém no grupo.", ephemeral: true });
 
-      await i.reply({
-        content: mentions.join(" ")
-      });
-
+      await i.reply({ content: mentions.join(" ") });
       return;
     }
 
@@ -271,6 +350,7 @@ client.on("interactionCreate", async i => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 // ================= SERVIDOR WEB PARA RENDER =================
 const express = require("express");
