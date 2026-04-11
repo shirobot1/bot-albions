@@ -314,7 +314,7 @@ client.on("interactionCreate", async i => {
     return i.reply({ embeds: [embed] });
   }
 
-  if (i.isButton()) {
+    if (i.isButton()) {
     const group = groups.get(i.message.id);
     if (!group)
       return i.reply({ content: "Evento expirado.", ephemeral: true });
@@ -334,8 +334,38 @@ client.on("interactionCreate", async i => {
       return;
     }
 
+    if (i.customId === "ping_all") {
 
-  for (const r in group.members)
+      if (i.user.id !== group.creatorId) {
+        return i.reply({
+          content: "❌ Apenas o criador pode usar o ping.",
+          ephemeral: true
+        });
+      }
+
+      const mentions = [];
+
+      for (const r in group.members) {
+        group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
+      }
+
+      if (!mentions.length) {
+        return i.reply({
+          content: "⚠️ Ninguém no grupo.",
+          ephemeral: true
+        });
+      }
+
+      await i.reply({
+        content: mentions.join(" ")
+      });
+
+      return; // 🔥 ESSENCIAL
+    }
+
+    const role = i.customId.replace("join_", "");
+
+    for (const r in group.members)
       group.members[r] = group.members[r].filter(u => u.id !== user.id);
 
     if (group.members[role].length >= group.roles[role].limit)
