@@ -54,6 +54,7 @@ function loadGroups() {
 /* ================= UTIL ================= */
 
 function getEmoji(roleName){
+
   const name = roleName.toLowerCase();
 
   if(name.includes("incubus")) return "<:Incubus:1479601055816749212>";
@@ -85,17 +86,18 @@ function getEmoji(roleName){
   return "⚔️";
 }
 
+// 🔥 SEM LIMITE
 function parseRoles(input) {
   const roles = {};
   const parts = input.split(",");
+
   for (const p of parts) {
-    const match = p.trim().match(/^(\d+)\s+(.+)$/);
-    if (match) {
-      const qty = parseInt(match[1]);
-      const name = match[2].trim();
-      roles[name] = { name, limit: qty };
+    const name = p.trim();
+    if (name.length > 0) {
+      roles[name] = { name };
     }
   }
+
   return roles;
 }
 
@@ -137,7 +139,7 @@ function buildEmbed(group) {
       group.members[key].map(u => `<@${u.id}>`).join("\n") || "—";
 
     embed.addFields({
-      name: `${emoji} ${role.name} (${group.members[key].length}/${role.limit})`,
+      name: `${emoji} ${role.name} (${group.members[key].length})`,
       value: members,
       inline: true
     });
@@ -149,19 +151,21 @@ function buildEmbed(group) {
 /* ================= BOTÕES ================= */
 
 function buildButtons(group) {
+
   const rows = [];
   let currentRow = new ActionRowBuilder();
   const allButtons = [];
 
   for (const key in group.roles) {
+
     const role = group.roles[key];
     const emoji = getEmoji(role.name);
 
     allButtons.push(
       new ButtonBuilder()
         .setCustomId("join_" + key)
-        .setEmoji(emoji)
-        .setLabel(role.name)
+        .setEmoji(emoji) 
+        .setLabel(role.name) 
         .setStyle(ButtonStyle.Primary)
     );
   }
@@ -190,34 +194,6 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= KICK BUTTONS ================= */
-
-function buildKickButtons(group) {
-  const rows = [];
-  let row = new ActionRowBuilder();
-
-  for (const roleKey in group.members) {
-    for (const user of group.members[roleKey]) {
-
-      const btn = new ButtonBuilder()
-        .setCustomId(`kick_${user.id}`)
-        .setLabel(`❌ ${user.username}`)
-        .setStyle(ButtonStyle.Secondary);
-
-      if (row.components.length === 5) {
-        rows.push(row);
-        row = new ActionRowBuilder();
-      }
-
-      row.addComponents(btn);
-    }
-  }
-
-  if (row.components.length > 0) rows.push(row);
-
-  return rows;
-}
-
 /* ================= READY ================= */
 
 client.once(Events.ClientReady, async () => {
@@ -242,10 +218,7 @@ client.on("interactionCreate", async i => {
 
       await i.update({
         embeds: [buildEmbed(group)],
-        components: [
-          ...buildButtons(group),
-          ...buildKickButtons(group)
-        ]
+        components: buildButtons(group)
       });
 
       saveGroups();
@@ -253,48 +226,31 @@ client.on("interactionCreate", async i => {
     }
 
     if (i.customId === "ping_all") {
+
       if (i.user.id !== group.creatorId) {
         return i.reply({
-          content: "❌ Apenas o criador pode usar o ping.",
+          content: "❌ Apenas o criador do evento pode usar o ping.",
           ephemeral: true
         });
       }
 
       const mentions = [];
-      for (const r in group.members)
+
+      for (const r in group.members) {
         group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
+      }
 
-      if (!mentions.length)
-        return i.reply({ content: "⚠️ Ninguém no grupo.", ephemeral: true });
-
-      await i.reply({ content: mentions.join(" ") });
-      return;
-    }
-
-    if (i.customId.startsWith("kick_")) {
-
-      if (i.user.id !== group.creatorId) {
+      if (!mentions.length) {
         return i.reply({
-          content: "❌ Apenas o criador pode remover.",
+          content: "⚠️ Ninguém no grupo.",
           ephemeral: true
         });
       }
 
-      const userId = i.customId.split("_")[1];
-
-      for (const r in group.members) {
-        group.members[r] = group.members[r].filter(u => u.id !== userId);
-      }
-
-      await i.update({
-        embeds: [buildEmbed(group)],
-        components: [
-          ...buildButtons(group),
-          ...buildKickButtons(group)
-        ]
+      await i.reply({
+        content: mentions.join(" ")
       });
 
-      saveGroups();
       return;
     }
 
@@ -303,17 +259,11 @@ client.on("interactionCreate", async i => {
     for (const r in group.members)
       group.members[r] = group.members[r].filter(u => u.id !== user.id);
 
-    if (group.members[role].length >= group.roles[role].limit)
-      return i.reply({ content: "Classe cheia.", ephemeral: true });
-
     group.members[role].push(user);
 
     await i.update({
       embeds: [buildEmbed(group)],
-      components: [
-        ...buildButtons(group),
-        ...buildKickButtons(group)
-      ]
+      components: buildButtons(group)
     });
 
     saveGroups();
