@@ -334,36 +334,8 @@ client.on("interactionCreate", async i => {
       return;
     }
 
-   if (i.customId === "ping_all") {
 
-  // 🔒 Apenas criador pode usar
-  if (i.user.id !== group.creatorId) {
-    return i.reply({
-      content: "❌ Apenas o criador do evento pode usar o ping.",
-      ephemeral: true
-    });
-  }
-
-  const mentions = [];
-
-  for (const r in group.members) {
-    group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
-  }
-
-  if (!mentions.length) {
-    return i.reply({
-      content: "⚠️ Ninguém no grupo.",
-      ephemeral: true
-    });
-  }
-
-  return i.reply({
-    content: mentions.join(" ")
-  });
-}
-
-    
-    for (const r in group.members)
+  for (const r in group.members)
       group.members[r] = group.members[r].filter(u => u.id !== user.id);
 
     if (group.members[role].length >= group.roles[role].limit)
