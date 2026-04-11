@@ -233,3 +233,13 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
+
+// ===== SERVIDOR PRA RENDER
+const PORT = process.env.PORT || 3000;
+
+require('http')
+  .createServer((req, res) => {
+    res.writeHead(200);
+    res.end("Bot rodando!");
+  })
+  .listen(PORT, () => console.log(`🌐 Porta ${PORT} ativa`));
