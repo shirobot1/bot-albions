@@ -361,11 +361,8 @@ client.on("interactionCreate", async i => {
     content: mentions.join(" ")
   });
 }
-    await i.reply({
-  content: mentions.join(" ")
-});
-return;
 
+    
     for (const r in group.members)
       group.members[r] = group.members[r].filter(u => u.id !== user.id);
 
