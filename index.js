@@ -10,10 +10,7 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  Events,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle
+  Events
 } = require("discord.js");
 
 const client = new Client({
@@ -86,24 +83,29 @@ function getEmoji(roleName){
   return "⚔️";
 }
 
+/* ================= FIX REAL (SEM LIMITE DE CLASSE) ================= */
+
 function parseRoles(input) {
   const roles = {};
   const parts = input.split(",");
+
   for (const p of parts) {
-    const match = p.trim().match(/^(\d+)\s+(.+)$/);
-    if (match) {
-      const qty = parseInt(match[1]);
-      const name = match[2].trim();
-      roles[name] = { name, limit: qty };
-    }
+    const name = p.trim();
+
+    if (!name) continue;
+
+    roles[name] = {
+      name: name
+    };
   }
+
   return roles;
 }
 
 function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, h + 3, min));
+  return new Date(y, m - 1, d, h, min);
 }
 
 function formatDate(d) {
@@ -139,7 +141,7 @@ function buildEmbed(group) {
       group.members[key].map(u => `<@${u.id}>`).join("\n") || "—";
 
     embed.addFields({
-      name: `${emoji} ${role.name} (${group.members[key].length}/${role.limit})`,
+      name: `${emoji} ${role.name} (${group.members[key].length})`,
       value: members,
       inline: true
     });
@@ -206,7 +208,7 @@ client.once(Events.ClientReady, async () => {
       .setDescription("Criar grupo de conteúdo")
       .addStringOption(o=>o.setName("tipo").setDescription("Tipo").setRequired(true))
       .addIntegerOption(o=>o.setName("jogadores").setDescription("Total jogadores").setRequired(true))
-      .addStringOption(o=>o.setName("classes").setDescription("1 tank, healer, dps").setRequired(true))
+      .addStringOption(o=>o.setName("classes").setDescription("tank, healer, dps").setRequired(true))
       .addStringOption(o=>o.setName("data").setDescription("DD/MM/AAAA").setRequired(true))
       .addStringOption(o=>o.setName("horario").setDescription("HH:MM UTC-3").setRequired(true))
       .addStringOption(o=>o.setName("descricao").setDescription("Descrição")),
@@ -216,15 +218,14 @@ client.once(Events.ClientReady, async () => {
       .setDescription("Calcular divisão de loot")
       .addIntegerOption(o=>o.setName("loot").setDescription("Valor total").setRequired(true))
       .addIntegerOption(o=>o.setName("jogadores").setDescription("Quantidade jogadores"))
-      .addStringOption(o=>o.setName("mencoes").setDescription("@user1 @user2")),
+      .addStringOption(o=>o.setName("mencoes").setDescription("@user")),
 
-    /* ================= NOVO ================= */
     new SlashCommandBuilder()
       .setName("remover")
-      .setDescription("Remover jogador do grupo")
+      .setDescription("Remover jogador")
       .addUserOption(o =>
         o.setName("usuario")
-        .setDescription("Usuário a remover")
+        .setDescription("Usuário")
         .setRequired(true)
       )
   ].map(c => c.toJSON());
@@ -271,27 +272,6 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    if (i.commandName === "divisao") {
-
-      const loot = i.options.getInteger("loot");
-      const jogadores = i.options.getInteger("jogadores") || 1;
-
-      const valor = Math.floor(loot / jogadores);
-
-      return i.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("💰 Divisão")
-            .addFields(
-              { name: "Loot", value: String(loot) },
-              { name: "Jogadores", value: String(jogadores) },
-              { name: "Cada um", value: String(valor) }
-            )
-        ]
-      });
-    }
-
-    /* ================= REMOVER ================= */
     if (i.commandName === "remover") {
 
       const user = i.options.getUser("usuario");
@@ -301,10 +281,10 @@ client.on("interactionCreate", async i => {
       );
 
       if (!group)
-        return i.reply({ content: "Usuário não está em grupo.", ephemeral: true });
+        return i.reply({ content: "Usuário não encontrado.", ephemeral: true });
 
       if (i.user.id !== group.creatorId)
-        return i.reply({ content: "❌ Só o criador pode remover.", ephemeral: true });
+        return i.reply({ content: "❌ Apenas o criador pode remover.", ephemeral: true });
 
       for (const r in group.members) {
         group.members[r] = group.members[r].filter(u => u.id !== user.id);
@@ -312,7 +292,7 @@ client.on("interactionCreate", async i => {
 
       saveGroups();
 
-      return i.reply({ content: "❌ Usuário removido com sucesso." });
+      return i.reply({ content: "Usuário removido." });
     }
   }
 
@@ -340,7 +320,7 @@ client.on("interactionCreate", async i => {
     if (i.customId === "ping_all") {
 
       if (i.user.id !== group.creatorId)
-        return i.reply({ content: "❌ Apenas o criador pode usar.", ephemeral: true });
+        return i.reply({ content: "❌ Apenas o criador.", ephemeral: true });
 
       const mentions = [];
       for (const r in group.members)
