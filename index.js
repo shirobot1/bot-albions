@@ -105,6 +105,8 @@ function parseRoles(input) {
 function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
+
+  // horário local Brasil (UTC-3) corretamente fixo
   return new Date(y, m - 1, d, h, min);
 }
 
