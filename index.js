@@ -38,10 +38,11 @@ function loadGroups() {
   try {
     if (fs.existsSync("./groups.json")) {
       const data = JSON.parse(fs.readFileSync("./groups.json", "utf8"));
+
       for (const id in data) {
-        data[id].startDate = new Date(data[id].startDate);
         groups.set(id, data[id]);
       }
+
       console.log(`[Sistema] ${groups.size} grupos carregados.`);
     }
   } catch (e) {
@@ -83,54 +84,27 @@ function getEmoji(roleName){
   return "⚔️";
 }
 
-function parseRoles(input) {
-  const roles = {};
-  const parts = input.split(",");
-  for (const p of parts) {
-    const match = p.trim().match(/^(\d+)\s+(.+)$/);
-    if (match) {
-      const qty = parseInt(match[1]);
-      const name = match[2].trim();
-      roles[name] = { name, limit: qty };
-    }
-  }
-  return roles;
-}
-
-function parseDateTime(dateStr, timeStr) {
-  const [d, m, y] = dateStr.split("/").map(Number);
-  const [h, min] = timeStr.split(":").map(Number);
-  return new Date(y, m - 1, d, h, min);
-}
-
-function formatDate(d) {
-  return d.toLocaleDateString("pt-BR");
-}
-
-function formatTime(d) {
-  return d.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-/* ================= EMBED ================= */
+/* ================= EMBED ORIGINAL ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${group.title}`)
     .setColor(0x5865F2)
     .setDescription(
-      `📅 Data: ${formatDate(group.startDate)}\n` +
-      `🕒 Horário: ${formatTime(group.startDate)}\n` +
+      `📅 Data: ${group.data || "—"}\n` +
+      `🕒 Horário: ${group.hora || "—"}\n` +
       `📝 ${group.description || "Sem descrição"}`
     );
 
+  if (!group.members) return embed;
+
   for (const key in group.members) {
+    const list = group.members[key] || [];
+
     embed.addFields({
       name: `${key}`,
-      value: group.members[key].length
-        ? group.members[key].map(u => `<@${u}>`).join("\n")
+      value: list.length
+        ? list.map(u => `<@${u.id || u}>`).join("\n")
         : "—",
       inline: true
     });
@@ -139,11 +113,13 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES ================= */
+/* ================= BOTÕES ORIGINAL ================= */
 
 function buildButtons(group) {
   const rows = [];
   let row = new ActionRowBuilder();
+
+  if (!group.members) return rows;
 
   for (const key in group.members) {
     const btn = new ButtonBuilder()
@@ -166,15 +142,15 @@ function buildButtons(group) {
 /* ================= DGAVA FULL ================= */
 
 const DGAVA_CLASSES = [
-  { name: "MAIN TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
-  { name: "OFF TANK", emoji: "<:OFF_TANK:1492631605166997694>" },
-  { name: "ARCANO ELEVADO", emoji: "<:ARCANO_ELEVADO:1492689272887705681>" },
-  { name: "ARCANO SILENCE", emoji: "<:ARCANO_SILENCE:1492689883301417051>" },
-  { name: "MAIN HEALER", emoji: "<:MAIN_HEALER:1492688340296925225>" },
+  { name: "MAIN_TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
+  { name: "OFF_TANK", emoji: "<:OFF_TANK:1492631605166997694>" },
+  { name: "ARCANO_ELEVADO", emoji: "<:ARCANO_ELEVADO:1492689272887705681>" },
+  { name: "ARCANO_SILENCE", emoji: "<:ARCANO_SILENCE:1492689883301417051>" },
+  { name: "MAIN_HEALER", emoji: "<:MAIN_HEALER:1492688340296925225>" },
   { name: "BRUXO", emoji: "<:BRUXO:1492688682350678157>" },
-  { name: "RAIZ PT HEAL", emoji: "<:RAIZ_PT_HEAL:1492689727982141531>" },
-  { name: "RAIZ BM", emoji: "<:RAIZ_BM:1492689129589313566>" },
-  { name: "QUEBRA REINOS", emoji: "<:QUEBRA_REINOS:1492689509958287621>" },
+  { name: "RAIZ_PT_HEAL", emoji: "<:RAIZ_PT_HEAL:1492689727982141531>" },
+  { name: "RAIZ_BM", emoji: "<:RAIZ_BM:1492689129589313566>" },
+  { name: "QUEBRA_REINOS", emoji: "<:QUEBRA_REINOS:1492689509958287621>" },
   { name: "INCUBUS", emoji: "<:INCUBUS:1492688930162872460>" },
   { name: "OCULTO", emoji: "<:OCULTO:1492692707846389850>" },
   { name: "SCOUT", emoji: "<:SCOUT:1492692746203299970>" },
@@ -190,26 +166,32 @@ const DPS_SUBCLASSES = [
   { label: "RAIZ DPS", value: "RAIZ_DPS", emoji: "<:RAIZ_DPS:1492693786625708244>" }
 ];
 
+/* ================= DGAVA EMBED ================= */
+
 function buildDgavaEmbed(event) {
   const embed = new EmbedBuilder()
     .setTitle("⚔️ DGAVA FULL RAID")
-    .setColor(0xFF0000)
+    .setColor(0xff0000)
     .setDescription(
-      `📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.descricao}`
+      `📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.description}`
     );
 
   for (const c of DGAVA_CLASSES) {
-    const list = event.members[c.name] || [];
+    const list = event.members?.[c.name] || [];
 
     embed.addFields({
       name: `${c.emoji} ${c.name}`,
-      value: list.length ? list.map(u => `<@${u}>`).join("\n") : "—",
+      value: list.length
+        ? list.map(u => `<@${u.id}>`).join("\n")
+        : "—",
       inline: true
     });
   }
 
   return embed;
 }
+
+/* ================= DGAVA BUTTONS ================= */
 
 function buildDgavaButtons() {
   const rows = [];
@@ -234,11 +216,13 @@ function buildDgavaButtons() {
   return rows;
 }
 
+/* ================= DPS MENU ================= */
+
 function buildDpsMenu() {
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("dgava_dps")
-      .setPlaceholder("Escolha DPS")
+      .setPlaceholder("Escolha sua subclasse DPS")
       .addOptions(DPS_SUBCLASSES)
   );
 }
@@ -251,79 +235,30 @@ client.once(Events.ClientReady, async () => {
 
   const commands = [
     new SlashCommandBuilder()
-      .setName("criar")
-      .setDescription("Criar grupo de conteúdo")
-      .addStringOption(o =>
-        o.setName("tipo")
-          .setDescription("Tipo do conteúdo")
-          .setRequired(true)
-      )
-      .addIntegerOption(o =>
-        o.setName("jogadores")
-          .setDescription("Total de jogadores")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("classes")
-          .setDescription("Ex: tank, healer, dps")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("data")
-          .setDescription("DD/MM/AAAA")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("horario")
-          .setDescription("HH:MM")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao")
-          .setDescription("Descrição do evento")
-          .setRequired(false)
-      ),
-
-    new SlashCommandBuilder()
       .setName("dgavafull")
       .setDescription("Criar DGAVA FULL RAID")
-      .addStringOption(o =>
-        o.setName("data")
-          .setDescription("DD/MM/AAAA")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("hora")
-          .setDescription("HH:MM")
-          .setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao")
-          .setDescription("Descrição do raid")
-          .setRequired(true)
-      )
+      .addStringOption(o => o.setName("data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-
-  await rest.put(
-    Routes.applicationCommands(client.user.id),
-    { body: commands }
-  );
+  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
   console.log("Comandos registrados.");
 });
 
-/* ================= INTERAÇÕES ================= */
+/* ================= INTERAÇÕES (CORRETO FULL) ================= */
 
 client.on("interactionCreate", async i => {
 
+  /* ===== DGAVA CREATE ===== */
   if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
     const event = {
       data: i.options.getString("data"),
       hora: i.options.getString("hora"),
-      descricao: i.options.getString("descricao"),
+      description: i.options.getString("descricao"),
       members: {},
       creatorId: i.user.id
     };
@@ -342,6 +277,7 @@ client.on("interactionCreate", async i => {
     saveGroups();
   }
 
+  /* ===== DGAVA BUTTONS ===== */
   if (i.isButton() && i.customId.startsWith("dgava_")) {
 
     const event = groups.get(i.message.id);
@@ -349,8 +285,8 @@ client.on("interactionCreate", async i => {
 
     const role = i.customId.replace("dgava_", "");
 
-    for (const c in event.members) {
-      event.members[c] = event.members[c].filter(u => u !== i.user.id);
+    for (const c of DGAVA_CLASSES) {
+      event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
     }
 
     if (role === "DPS") {
@@ -360,7 +296,7 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    event.members[role].push(i.user.id);
+    event.members[role].push(i.user);
 
     return i.update({
       embeds: [buildDgavaEmbed(event)],
@@ -368,27 +304,31 @@ client.on("interactionCreate", async i => {
     });
   }
 
+  /* ===== DPS SELECT ===== */
   if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
     const event = groups.get(i.message.id);
     if (!event) return;
 
-    for (const c in event.members) {
-      event.members[c] = event.members[c].filter(u => u !== i.user.id);
+    const selected = i.values[0];
+
+    for (const c of DGAVA_CLASSES) {
+      event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
     }
 
-    event.members["DPS"].push(i.user.id);
+    event.members["DPS"].push({
+      id: i.user.id,
+      sub: selected
+    });
 
     return i.reply({
-      content: `DPS selecionado: ${i.values[0]}`,
+      content: `DPS selecionado: ${selected}`,
       ephemeral: true
     });
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-
-/* ================= SERVIDOR WEB ================= */
+/* ================= EXPRESS ================= */
 
 const express = require("express");
 const app = express();
@@ -398,7 +338,6 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Servidor web ativo na porta " + PORT));
 
-app.listen(PORT, () => {
-  console.log("Servidor web ativo na porta " + PORT);
-});
+client.login(process.env.DISCORD_TOKEN);
