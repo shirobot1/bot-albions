@@ -10,7 +10,8 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  Events
+  Events,
+  StringSelectMenuBuilder
 } = require("discord.js");
 
 const client = new Client({
@@ -51,7 +52,6 @@ function loadGroups() {
 /* ================= UTIL ================= */
 
 function getEmoji(roleName){
-
   const name = roleName.toLowerCase();
 
   if(name.includes("incubus")) return "<:Incubus:1479601055816749212>";
@@ -83,45 +83,38 @@ function getEmoji(roleName){
   return "⚔️";
 }
 
-/* ================= FIX REAL (SEM LIMITE DE CLASSE) ================= */
-
 function parseRoles(input) {
   const roles = {};
   const parts = input.split(",");
-
   for (const p of parts) {
-    const name = p.trim();
-
-    if (!name) continue;
-
-    roles[name] = {
-      name: name
-    };
+    const match = p.trim().match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const qty = parseInt(match[1]);
+      const name = match[2].trim();
+      roles[name] = { name, limit: qty };
+    }
   }
-
   return roles;
 }
 
 function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
-
-  // cria data como "horário Brasil fixo"
-  return new Date(y, m - 1, d, h, min, 0);
+  return new Date(y, m - 1, d, h, min);
 }
 
 function formatDate(d) {
-  return `${String(d.getDate()).padStart(2, "0")}/${
-    String(d.getMonth() + 1).padStart(2, "0")
-  }/${d.getFullYear()}`;
+  return d.toLocaleDateString("pt-BR");
 }
 
 function formatTime(d) {
-  return `${String(d.getHours()).padStart(2, "0")}:${
-    String(d.getMinutes()).padStart(2, "0")
-  }`;
+  return d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
-/* ================= EMBED ================= */
+
+/* ================= EMBED NORMAL ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
@@ -129,21 +122,16 @@ function buildEmbed(group) {
     .setColor(0x5865F2)
     .setDescription(
       `📅 Data: ${formatDate(group.startDate)}\n` +
-      `🕒 Horário: ${formatTime(group.startDate)} BR\n` +
-      `📝 ${group.description}\n\n` +
-      `👥 Total: ${group.total}`
+      `🕒 Horário: ${formatTime(group.startDate)}\n` +
+      `📝 ${group.description || "Sem descrição"}`
     );
 
-  for (const key in group.roles) {
-    const role = group.roles[key];
-    const emoji = getEmoji(role.name);
-
-    const members =
-      group.members[key].map(u => `<@${u.id}>`).join("\n") || "—";
-
+  for (const key in group.members) {
     embed.addFields({
-      name: `${emoji} ${role.name} (${group.members[key].length})`,
-      value: members,
+      name: `${key}`,
+      value: group.members[key].length
+        ? group.members[key].map(u => `<@${u}>`).join("\n")
+        : "—",
       inline: true
     });
   }
@@ -151,200 +139,217 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES ================= */
+/* ================= BOTÕES NORMAL ================= */
 
 function buildButtons(group) {
-
   const rows = [];
-  let currentRow = new ActionRowBuilder();
-  const allButtons = [];
+  let row = new ActionRowBuilder();
 
-  for (const key in group.roles) {
+  for (const key in group.members) {
+    const btn = new ButtonBuilder()
+      .setCustomId("join_" + key)
+      .setLabel(key)
+      .setStyle(ButtonStyle.Primary);
 
-    const role = group.roles[key];
-    const emoji = getEmoji(role.name);
-
-    allButtons.push(
-      new ButtonBuilder()
-        .setCustomId("join_" + key)
-        .setEmoji(emoji)
-        .setLabel(role.name)
-        .setStyle(ButtonStyle.Primary)
-    );
-  }
-
-  allButtons.push(
-    new ButtonBuilder()
-      .setCustomId("leave")
-      .setLabel("🚪 Sair")
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId("ping_all")
-      .setLabel("🔔 Ping")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  for (const button of allButtons) {
-    if (currentRow.components.length === 5) {
-      rows.push(currentRow);
-      currentRow = new ActionRowBuilder();
+    if (row.components.length === 5) {
+      rows.push(row);
+      row = new ActionRowBuilder();
     }
-    currentRow.addComponents(button);
+
+    row.addComponents(btn);
   }
 
-  if (currentRow.components.length > 0) rows.push(currentRow);
+  rows.push(row);
   return rows;
+}
+
+/* ================= DGAVA FULL (ADICIONADO) ================= */
+
+const DGAVA_CLASSES = [
+  { name: "MAIN TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
+  { name: "OFF TANK", emoji: "<:OFF_TANK:1492631605166997694>" },
+  { name: "ARCANO ELEVADO", emoji: "<:ARCANO_ELEVADO:1492689272887705681>" },
+  { name: "ARCANO SILENCE", emoji: "<:ARCANO_SILENCE:1492689883301417051>" },
+  { name: "MAIN HEALER", emoji: "<:MAIN_HEALER:1492688340296925225>" },
+  { name: "BRUXO", emoji: "<:BRUXO:1492688682350678157>" },
+  { name: "RAIZ PT HEAL", emoji: "<:RAIZ_PT_HEAL:1492689727982141531>" },
+  { name: "RAIZ BM", emoji: "<:RAIZ_BM:1492689129589313566>" },
+  { name: "QUEBRA REINOS", emoji: "<:QUEBRA_REINOS:1492689509958287621>" },
+  { name: "INCUBUS", emoji: "<:INCUBUS:1492688930162872460>" },
+  { name: "OCULTO", emoji: "<:OCULTO:1492692707846389850>" },
+  { name: "SCOUT", emoji: "<:SCOUT:1492692746203299970>" },
+  { name: "DPS", emoji: "<:DPS:1492631692823891998>" }
+];
+
+const DPS_SUBCLASSES = [
+  { label: "FROST", value: "FROST", emoji: "<:FROST:1492689983901929572>" },
+  { label: "FULGURANTE", value: "FULGURANTE", emoji: "<:FULGURANTE:1492688810180608010>" },
+  { label: "FOICE DE CRISTAL", value: "FOICE", emoji: "<:FOICE_DE_CRISTAL:1492688757583777905>" },
+  { label: "AGUIA", value: "AGUIA", emoji: "<:AGUIA:1492688099459727390>" },
+  { label: "BESTA LEVE", value: "BESTA", emoji: "<:BESTALEVE:1492688194511306953>" },
+  { label: "RAIZ DPS", value: "RAIZ_DPS", emoji: "<:RAIZ_DPS:1492693786625708244>" }
+];
+
+function buildDgavaEmbed(event) {
+  const embed = new EmbedBuilder()
+    .setTitle("⚔️ DGAVA FULL RAID")
+    .setColor(0xFF0000)
+    .setDescription(
+      `📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.descricao}`
+    );
+
+  for (const c of DGAVA_CLASSES) {
+    const list = event.members[c.name] || [];
+
+    embed.addFields({
+      name: `${c.emoji} ${c.name}`,
+      value: list.length ? list.map(u => `<@${u}>`).join("\n") : "—",
+      inline: true
+    });
+  }
+
+  return embed;
+}
+
+function buildDgavaButtons() {
+  const rows = [];
+  let row = new ActionRowBuilder();
+
+  for (const c of DGAVA_CLASSES) {
+    const btn = new ButtonBuilder()
+      .setCustomId("dgava_" + c.name)
+      .setLabel(c.name)
+      .setEmoji(c.emoji)
+      .setStyle(ButtonStyle.Primary);
+
+    if (row.components.length === 5) {
+      rows.push(row);
+      row = new ActionRowBuilder();
+    }
+
+    row.addComponents(btn);
+  }
+
+  rows.push(row);
+  return rows;
+}
+
+function buildDpsMenu() {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("dgava_dps")
+      .setPlaceholder("Escolha DPS")
+      .addOptions(DPS_SUB)
+  );
 }
 
 /* ================= READY ================= */
 
 client.once(Events.ClientReady, async () => {
-  console.log(`Bot online como ${client.user.tag}`);
+  console.log(`Bot online ${client.user.tag}`);
   loadGroups();
 
   const commands = [
     new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar grupo de conteúdo")
-      .addStringOption(o=>o.setName("tipo").setDescription("Tipo").setRequired(true))
-      .addIntegerOption(o=>o.setName("jogadores").setDescription("Total jogadores").setRequired(true))
-      .addStringOption(o=>o.setName("classes").setDescription("tank, healer, dps").setRequired(true))
-      .addStringOption(o=>o.setName("data").setDescription("DD/MM/AAAA").setRequired(true))
-      .addStringOption(o=>o.setName("horario").setDescription("HH:MM UTC-3").setRequired(true))
-      .addStringOption(o=>o.setName("descricao").setDescription("Descrição")),
+      .setDescription("Criar grupo")
+      .addStringOption(o => o.setName("tipo").setRequired(true))
+      .addIntegerOption(o => o.setName("jogadores").setRequired(true))
+      .addStringOption(o => o.setName("classes").setRequired(true))
+      .addStringOption(o => o.setName("data").setRequired(true))
+      .addStringOption(o => o.setName("horario").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setRequired(false)),
 
     new SlashCommandBuilder()
-      .setName("divisao")
-      .setDescription("Calcular divisão de loot")
-      .addIntegerOption(o=>o.setName("loot").setDescription("Valor total").setRequired(true))
-      .addIntegerOption(o=>o.setName("jogadores").setDescription("Quantidade jogadores"))
-      .addStringOption(o=>o.setName("mencoes").setDescription("@user")),
-
-    new SlashCommandBuilder()
-      .setName("remover")
-      .setDescription("Remover jogador")
-      .addUserOption(o =>
-        o.setName("usuario")
-        .setDescription("Usuário")
-        .setRequired(true)
-      )
+      .setName("dgavafull")
+      .setDescription("DGAVA FULL RAID")
+      .addStringOption(o => o.setName("data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-
-  console.log("Comandos registrados.");
 });
 
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
 
-  if (i.isChatInputCommand()) {
+  /* ===== DGAVA FULL ===== */
 
-    if (i.commandName === "criar") {
+  if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
-      const roles = parseRoles(i.options.getString("classes"));
+    const event = {
+      data: i.options.getString("data"),
+      hora: i.options.getString("hora"),
+      descricao: i.options.getString("descricao"),
+      members: {},
+      creatorId: i.user.id
+    };
 
-      const members = {};
-      for (const r in roles) members[r] = [];
-
-      const group = {
-        title: i.options.getString("tipo"),
-        total: i.options.getInteger("jogadores"),
-        roles,
-        members,
-        description: i.options.getString("descricao") || "Sem descrição",
-        startDate: parseDateTime(
-          i.options.getString("data"),
-          i.options.getString("horario")
-        ),
-        creatorId: i.user.id
-      };
-
-      const msg = await i.reply({
-        embeds: [buildEmbed(group)],
-        components: buildButtons(group),
-        fetchReply: true
-      });
-
-      groups.set(msg.id, group);
-      saveGroups();
+    for (const c of DGAVA_CLASSES) {
+      event.members[c.name] = [];
     }
 
-    if (i.commandName === "remover") {
-
-      const user = i.options.getUser("usuario");
-
-      const group = [...groups.values()].find(g =>
-        Object.values(g.members).flat().some(u => u.id === user.id)
-      );
-
-      if (!group)
-        return i.reply({ content: "Usuário não encontrado.", ephemeral: true });
-
-      if (i.user.id !== group.creatorId)
-        return i.reply({ content: "❌ Apenas o criador pode remover.", ephemeral: true });
-
-      for (const r in group.members) {
-        group.members[r] = group.members[r].filter(u => u.id !== user.id);
-      }
-
-      saveGroups();
-
-      return i.reply({ content: "Usuário removido." });
-    }
-  }
-
-  if (i.isButton()) {
-
-    const group = groups.get(i.message.id);
-    if (!group)
-      return i.reply({ content: "Evento expirado.", ephemeral: true });
-
-    const user = i.user;
-
-    if (i.customId === "leave") {
-      for (const r in group.members)
-        group.members[r] = group.members[r].filter(u => u.id !== user.id);
-
-      await i.update({
-        embeds: [buildEmbed(group)],
-        components: buildButtons(group)
-      });
-
-      saveGroups();
-      return;
-    }
-
-    if (i.customId === "ping_all") {
-
-      if (i.user.id !== group.creatorId)
-        return i.reply({ content: "❌ Apenas o criador.", ephemeral: true });
-
-      const mentions = [];
-      for (const r in group.members)
-        group.members[r].forEach(u => mentions.push(`<@${u.id}>`));
-
-      return i.reply({ content: mentions.join(" ") || "Vazio" });
-    }
-
-    const role = i.customId.replace("join_", "");
-
-    for (const r in group.members)
-      group.members[r] = group.members[r].filter(u => u.id !== user.id);
-
-    group.members[role].push(user);
-
-    await i.update({
-      embeds: [buildEmbed(group)],
-      components: buildButtons(group)
+    const msg = await i.reply({
+      embeds: [buildDgavaEmbed(event)],
+      components: buildDgavaButtons(),
+      fetchReply: true
     });
 
+    groups.set(msg.id, event);
     saveGroups();
   }
+
+  /* ===== BOTÕES DGAVA ===== */
+
+  if (i.isButton() && i.customId.startsWith("dgava_")) {
+
+    const event = groups.get(i.message.id);
+    if (!event) return;
+
+    const role = i.customId.replace("dgava_", "");
+
+    for (const c in event.members) {
+      event.members[c] = event.members[c].filter(u => u !== i.user.id);
+    }
+
+    if (role === "DPS") {
+      return i.update({
+        embeds: [buildDgavaEmbed(event)],
+        components: [...buildDgavaButtons(), buildDpsMenu()]
+      });
+    }
+
+    event.members[role].push(i.user.id);
+
+    return i.update({
+      embeds: [buildDgavaEmbed(event)],
+      components: buildDgavaButtons()
+    });
+  }
+
+  /* ===== DPS MENU ===== */
+
+  if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
+
+    const event = groups.get(i.message.id);
+    if (!event) return;
+
+    for (const c in event.members) {
+      event.members[c] = event.members[c].filter(u => u !== i.user.id);
+    }
+
+    event.members["DPS"].push(i.user.id);
+
+    return i.reply({
+      content: `DPS selecionado: ${i.values[0]}`,
+      ephemeral: true
+    });
+  }
 });
+
 
 client.login(process.env.DISCORD_TOKEN);
 
