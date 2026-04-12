@@ -297,53 +297,44 @@ client.on("interactionCreate", async i => {
     
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
-  try {
+  const raw = i.options.getString("classes");
 
-    await i.deferReply(); // 🔥 EVITA "Falha na interação"
+  const event = {
+    data: i.options.getString("data"),
+    hora: i.options.getString("hora"),
+    description: i.options.getString("descricao"),
+    members: {},
+    creatorId: i.user.id,
+    title: "EVENTO PERSONALIZADO"
+  };
 
-    const raw = i.options.getString("classes");
+  const parts = raw.split(",");
 
-    const event = {
-      title: "EVENTO PERSONALIZADO",
-      data: i.options.getString("data"),
-      hora: i.options.getString("hora"),
-      description: i.options.getString("descricao"),
-      members: {},
-      creatorId: i.user.id
-    };
+  for (const part of parts) {
+    const clean = part.trim();
 
-    const parts = raw.split(",");
+    const match = clean.match(/<:([a-zA-Z0-9_]+):\d+>/);
 
-    for (const part of parts) {
-      const clean = part.trim();
+    let name;
 
-      const match = clean.match(/<:[a-zA-Z0-9_]+:\d+>/);
-
-      let name = match
-        ? match[0].split(":")[1]
-        : clean.toLowerCase();
-
-      event.members[name] = [];
+    if (match) {
+      name = match[1]; // 🔥 CORRETO (nome limpo do emoji)
+    } else {
+      name = clean.toUpperCase();
     }
 
-    await i.editReply({
-      embeds: [buildEmbed(event)],
-      components: buildButtons(event)
-    });
-
-    groups.set(Date.now().toString(), event);
-    saveGroups();
-
-  } catch (err) {
-    console.error("ERRO /criar:", err);
-
-    if (!i.replied) {
-      await i.reply({
-        content: "Erro ao criar evento.",
-        ephemeral: true
-      });
-    }
+    event.members[name] = [];
   }
+
+  const msg = await i.reply({
+    embeds: [buildEmbed(event)],
+    components: buildButtons(event),
+    fetchReply: true
+  });
+
+  // 🔥 IMPORTANTE: usa ID da mensagem (igual DGAVA FULL)
+  groups.set(msg.id, event);
+  saveGroups();
 }
 
     /* BUTTONS */
