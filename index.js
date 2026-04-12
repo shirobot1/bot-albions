@@ -106,22 +106,27 @@ function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
 
-  // horário local Brasil (UTC-3) corretamente fixo
-  return new Date(y, m - 1, d, h, min);
+  // salva como UTC REAL (sem fuso do servidor)
+  return new Date(Date.UTC(y, m - 1, d, h, min));
 }
 
 function formatDate(d) {
-  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(d);
 }
 
 function formatTime(d) {
-  return d.toLocaleTimeString("pt-BR", {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "America/Sao_Paulo"
-  });
+    hour12: false
+  }).format(d);
 }
-
 /* ================= EMBED ================= */
 
 function buildEmbed(group) {
