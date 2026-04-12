@@ -84,24 +84,11 @@ function getEmoji(roleName) {
   return "⚔️";
 }
 
-/* ================= EMBED PERSONALIZADO (/criar FIX EMOJI) ================= */
-
-function resolveEmoji(name) {
-  const n = name.toLowerCase();
-
-  if (n.includes("main_tank")) return "<:MAIN_TANK:1492631415953686559>";
-  if (n.includes("off_tank")) return "<:OFF_TANK:1492631605166997694>";
-  if (n.includes("arcano")) return "<:ARCANO_ELEVADO:1492689272887705681>";
-  if (n.includes("healer")) return "<:MAIN_HEALER:1492688340296925225>";
-  if (n.includes("bruxo")) return "<:BRUXO:1492688682350678157>";
-  if (n.includes("dps")) return "<:DPS:1492631692823891998>";
-
-  return "⚔️";
-}
+/* ================= EMBED ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ ${group.title}`)
+    .setTitle(`⚔️ ${group.title || "EVENTO"}`)
     .setColor(0x5865F2)
     .setDescription(
       `📅 Data: ${group.data}\n🕒 Horário: ${group.hora}\n📝 ${group.description || "Sem descrição"}`
@@ -113,7 +100,7 @@ function buildEmbed(group) {
     const list = group.members[key] || [];
 
     embed.addFields({
-      name: `${resolveEmoji(key)} ${key}`,
+      name: `${key}`,
       value: list.length
         ? list.map(u => `<@${u.id}>`).join("\n")
         : "—",
@@ -284,16 +271,15 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* ================= DGAVA FULL ================= */
+    /* DGAVA */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
       const event = {
+        title: "DGAVA FULL RAID",
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
         description: i.options.getString("descricao"),
-        members: {},
-        creatorId: i.user.id,
-        title: "DGAVA FULL"
+        members: {}
       };
 
       for (const c of DGAVA_CLASSES) {
@@ -310,8 +296,10 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    /* ================= /criar FIX ================= */
+    /* CRIAR */
     if (i.isChatInputCommand() && i.commandName === "criar") {
+
+      await i.deferReply();
 
       const raw = i.options.getString("classes");
 
@@ -320,34 +308,36 @@ client.on("interactionCreate", async i => {
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
         description: i.options.getString("descricao"),
-        members: {},
-        creatorId: i.user.id
+        members: {}
       };
 
       const parts = raw.split(",");
 
       for (const part of parts) {
         const clean = part.trim();
-
         const match = clean.match(/<:([a-zA-Z0-9_]+):\d+>/);
 
-        let name = match ? match[1].toUpperCase() : clean.toUpperCase();
+        const name = match ? match[1] : clean.toUpperCase();
 
-        event.members[name] = [];
+        // 🔥 FIX: agora salva emoji também
+        event.members[name] = [{
+          id: "preview",
+          sub: null,
+          emoji: clean
+        }];
       }
 
-      const msg = await i.reply({
+      const msg = await i.editReply({
         embeds: [buildEmbed(event)],
         components: buildButtons(event),
         fetchReply: true
       });
 
-      // 🔥 CORREÇÃO PRINCIPAL (INTERAÇÃO)
       groups.set(msg.id, event);
       saveGroups();
     }
 
-    /* ================= BUTTONS ================= */
+    /* BUTTONS */
     if (i.isButton() && i.customId.startsWith("dgava_")) {
 
       const event = groups.get(i.message.id);
@@ -374,7 +364,7 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    /* ================= DPS SELECT ================= */
+    /* DPS MENU */
     if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
       const event = groups.get(i.message.id);
@@ -395,7 +385,10 @@ client.on("interactionCreate", async i => {
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("INTERACTION ERROR:", err);
+
+    if (i.deferred || i.replied) return;
+    await i.reply({ content: "Erro na interação.", ephemeral: true }).catch(() => {});
   }
 });
 
