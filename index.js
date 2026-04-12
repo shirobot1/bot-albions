@@ -212,24 +212,13 @@ function buildDgavaButtons() {
 
 /* ================= DPS MENU ================= */
 
-if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
-
-  const event = groups.get(i.message.id);
-  if (!event) return;
-
-  const selected = i.values[0];
-
-  for (const c of DGAVA_CLASSES) {
-    event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
-  }
-
-  event.members["DPS"].push({ id: i.user.id, sub: selected });
-
-  // 🔥 AQUI ESTÁ A CORREÇÃO
-  return i.update({
-    embeds: [buildDgavaEmbed(event)],
-    components: [...buildDgavaButtons(), buildDpsMenu()]
-  });
+function buildDpsMenu() {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("dgava_dps")
+      .setPlaceholder("Escolha sua subclasse DPS")
+      .addOptions(DPS_SUBCLASSES)
+  );
 }
 
 /* ================= READY ================= */
@@ -316,7 +305,8 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    /* DPS SELECT */
+    /* ================= DPS SELECT (CORRIGIDO) ================= */
+
     if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
       const event = groups.get(i.message.id);
@@ -330,9 +320,10 @@ client.on("interactionCreate", async i => {
 
       event.members["DPS"].push({ id: i.user.id, sub: selected });
 
-      return i.reply({
-        content: `DPS selecionado: ${selected}`,
-        ephemeral: true
+      // 🔥 FIX PRINCIPAL: agora atualiza o embed corretamente
+      return i.update({
+        embeds: [buildDgavaEmbed(event)],
+        components: [...buildDgavaButtons(), buildDpsMenu()]
       });
     }
 
