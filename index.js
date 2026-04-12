@@ -106,31 +106,20 @@ function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
 
-  // salva como UTC puro SEM ajuste automático do Node
-  return new Date(Date.UTC(y, m - 1, d, h, min));
+  // cria data como "horário Brasil fixo"
+  return new Date(y, m - 1, d, h, min, 0);
 }
 
 function formatDate(d) {
-  const utc = d.getTime();
-  const offset = -3 * 60; // Brasil UTC-3
-  const local = new Date(utc + offset * 60000);
-
-  const dd = String(local.getUTCDate()).padStart(2, "0");
-  const mm = String(local.getUTCMonth() + 1).padStart(2, "0");
-  const yyyy = local.getUTCFullYear();
-
-  return `${dd}/${mm}/${yyyy}`;
+  return `${String(d.getDate()).padStart(2, "0")}/${
+    String(d.getMonth() + 1).padStart(2, "0")
+  }/${d.getFullYear()}`;
 }
 
 function formatTime(d) {
-  const utc = d.getTime();
-  const offset = -3 * 60; // Brasil UTC-3
-  const local = new Date(utc + offset * 60000);
-
-  const hh = String(local.getUTCHours()).padStart(2, "0");
-  const min = String(local.getUTCMinutes()).padStart(2, "0");
-
-  return `${hh}:${min}`;
+  return `${String(d.getHours()).padStart(2, "0")}:${
+    String(d.getMinutes()).padStart(2, "0")
+  }`;
 }
 /* ================= EMBED ================= */
 
