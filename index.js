@@ -114,7 +114,7 @@ function formatTime(d) {
   });
 }
 
-/* ================= EMBED NORMAL ================= */
+/* ================= EMBED ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
@@ -139,7 +139,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES NORMAL ================= */
+/* ================= BOTÕES ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -163,7 +163,7 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= DGAVA FULL (ADICIONADO) ================= */
+/* ================= DGAVA FULL ================= */
 
 const DGAVA_CLASSES = [
   { name: "MAIN TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
@@ -239,7 +239,7 @@ function buildDpsMenu() {
     new StringSelectMenuBuilder()
       .setCustomId("dgava_dps")
       .setPlaceholder("Escolha DPS")
-      .addOptions(DPS_SUB)
+      .addOptions(DPS_SUBCLASSES)
   );
 }
 
@@ -249,66 +249,74 @@ client.once(Events.ClientReady, async () => {
   console.log(`Bot online ${client.user.tag}`);
   loadGroups();
 
- const commands = [
-  new SlashCommandBuilder()
-    .setName("criar")
-    .setDescription("Criar grupo de conteúdo")
-    .addStringOption(o =>
-      o.setName("tipo")
-        .setDescription("Tipo do conteúdo")
-        .setRequired(true)
-    )
-    .addIntegerOption(o =>
-      o.setName("jogadores")
-        .setDescription("Total de jogadores")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("classes")
-        .setDescription("Ex: tank, healer, dps")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("data")
-        .setDescription("DD/MM/AAAA")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("horario")
-        .setDescription("HH:MM")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descrição do evento")
-        .setRequired(false)
-    ),
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("criar")
+      .setDescription("Criar grupo de conteúdo")
+      .addStringOption(o =>
+        o.setName("tipo")
+          .setDescription("Tipo do conteúdo")
+          .setRequired(true)
+      )
+      .addIntegerOption(o =>
+        o.setName("jogadores")
+          .setDescription("Total de jogadores")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("classes")
+          .setDescription("Ex: tank, healer, dps")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("data")
+          .setDescription("DD/MM/AAAA")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("horario")
+          .setDescription("HH:MM")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao")
+          .setDescription("Descrição do evento")
+          .setRequired(false)
+      ),
 
-  new SlashCommandBuilder()
-    .setName("dgavafull")
-    .setDescription("Criar DGAVA FULL RAID")
-    .addStringOption(o =>
-      o.setName("data")
-        .setDescription("DD/MM/AAAA")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("hora")
-        .setDescription("HH:MM")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descrição do raid")
-        .setRequired(true)
-    )
-].map(c => c.toJSON());
-  
+    new SlashCommandBuilder()
+      .setName("dgavafull")
+      .setDescription("Criar DGAVA FULL RAID")
+      .addStringOption(o =>
+        o.setName("data")
+          .setDescription("DD/MM/AAAA")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora")
+          .setDescription("HH:MM")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao")
+          .setDescription("Descrição do raid")
+          .setRequired(true)
+      )
+  ].map(c => c.toJSON());
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  await rest.put(
+    Routes.applicationCommands(client.user.id),
+    { body: commands }
+  );
+
+  console.log("Comandos registrados.");
+});
+
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
-
-  /* ===== DGAVA FULL ===== */
 
   if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
@@ -333,8 +341,6 @@ client.on("interactionCreate", async i => {
     groups.set(msg.id, event);
     saveGroups();
   }
-
-  /* ===== BOTÕES DGAVA ===== */
 
   if (i.isButton() && i.customId.startsWith("dgava_")) {
 
@@ -362,8 +368,6 @@ client.on("interactionCreate", async i => {
     });
   }
 
-  /* ===== DPS MENU ===== */
-
   if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
     const event = groups.get(i.message.id);
@@ -382,10 +386,10 @@ client.on("interactionCreate", async i => {
   }
 });
 
-
 client.login(process.env.DISCORD_TOKEN);
 
-// ================= SERVIDOR WEB PARA RENDER =================
+/* ================= SERVIDOR WEB ================= */
+
 const express = require("express");
 const app = express();
 
