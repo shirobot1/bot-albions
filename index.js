@@ -239,7 +239,25 @@ client.once(Events.ClientReady, async () => {
       )
       .addStringOption(o =>
         o.setName("descricao").setDescription("Descrição").setRequired(true)
-      )
+      ),
+
+    new SlashCommandBuilder()
+  .setName("criar")
+  .setDescription("Criar evento manual com emojis do servidor")
+  .addStringOption(o =>
+    o.setName("classes")
+      .setDescription("Ex: <:MAIN_TANK:ID>, <:MAIN_HEALER:ID>")
+      .setRequired(true)
+  )
+  .addStringOption(o =>
+    o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
+  )
+  .addStringOption(o =>
+    o.setName("hora").setDescription("HH:MM").setRequired(true)
+  )
+  .addStringOption(o =>
+    o.setName("descricao").setDescription("Descrição").setRequired(true)
+  )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -247,7 +265,6 @@ client.once(Events.ClientReady, async () => {
 
   console.log("Comandos registrados.");
 });
-
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
@@ -277,6 +294,35 @@ client.on("interactionCreate", async i => {
       groups.set(msg.id, event);
       saveGroups();
     }
+    
+    if (i.isChatInputCommand() && i.commandName === "criar") {
+
+  const raw = i.options.getString("classes");
+
+  const event = {
+    data: i.options.getString("data"),
+    hora: i.options.getString("hora"),
+    description: i.options.getString("descricao"),
+    members: {},
+    creatorId: i.user.id
+  };
+
+  const emojis = raw.match(/<:[a-zA-Z0-9_]+:\d+>/g) || [];
+
+  for (const emoji of emojis) {
+    const name = emoji.split(":")[1];
+    event.members[name] = [];
+  }
+
+  const msg = await i.reply({
+    embeds: [buildEmbed(event)],
+    components: buildButtons(event),
+    fetchReply: true
+  });
+
+  groups.set(msg.id, event);
+  saveGroups();
+}
 
     /* BUTTONS */
     if (i.isButton() && i.customId.startsWith("dgava_")) {
