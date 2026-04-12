@@ -307,10 +307,24 @@ client.on("interactionCreate", async i => {
     creatorId: i.user.id
   };
 
-  const emojis = raw.match(/<:[a-zA-Z0-9_]+:\d+>/g) || [];
+  // pega emojis ou nomes
+  const parts = raw.split(",");
 
-  for (const emoji of emojis) {
-    const name = emoji.split(":")[1];
+  for (const part of parts) {
+    const clean = part.trim();
+
+    // tenta pegar emoji direto <:name:id>
+    const match = clean.match(/<:[a-zA-Z0-9_]+:\d+>/);
+
+    let name;
+
+    if (match) {
+      name = match[0].split(":")[1];
+    } else {
+      // fallback usando seu sistema existente
+      name = clean.toLowerCase();
+    }
+
     event.members[name] = [];
   }
 
