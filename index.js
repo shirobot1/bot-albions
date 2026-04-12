@@ -297,45 +297,53 @@ client.on("interactionCreate", async i => {
     
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
-  const raw = i.options.getString("classes");
+  try {
 
-  const event = {
-    data: i.options.getString("data"),
-    hora: i.options.getString("hora"),
-    description: i.options.getString("descricao"),
-    members: {},
-    creatorId: i.user.id
-  };
+    await i.deferReply(); // 🔥 EVITA "Falha na interação"
 
-  // pega emojis ou nomes
-  const parts = raw.split(",");
+    const raw = i.options.getString("classes");
 
-  for (const part of parts) {
-    const clean = part.trim();
+    const event = {
+      title: "EVENTO PERSONALIZADO",
+      data: i.options.getString("data"),
+      hora: i.options.getString("hora"),
+      description: i.options.getString("descricao"),
+      members: {},
+      creatorId: i.user.id
+    };
 
-    // tenta pegar emoji direto <:name:id>
-    const match = clean.match(/<:[a-zA-Z0-9_]+:\d+>/);
+    const parts = raw.split(",");
 
-    let name;
+    for (const part of parts) {
+      const clean = part.trim();
 
-    if (match) {
-      name = match[0].split(":")[1];
-    } else {
-      // fallback usando seu sistema existente
-      name = clean.toLowerCase();
+      const match = clean.match(/<:[a-zA-Z0-9_]+:\d+>/);
+
+      let name = match
+        ? match[0].split(":")[1]
+        : clean.toLowerCase();
+
+      event.members[name] = [];
     }
 
-    event.members[name] = [];
+    await i.editReply({
+      embeds: [buildEmbed(event)],
+      components: buildButtons(event)
+    });
+
+    groups.set(Date.now().toString(), event);
+    saveGroups();
+
+  } catch (err) {
+    console.error("ERRO /criar:", err);
+
+    if (!i.replied) {
+      await i.reply({
+        content: "Erro ao criar evento.",
+        ephemeral: true
+      });
+    }
   }
-
-  const msg = await i.reply({
-    embeds: [buildEmbed(event)],
-    components: buildButtons(event),
-    fetchReply: true
-  });
-
-  groups.set(msg.id, event);
-  saveGroups();
 }
 
     /* BUTTONS */
