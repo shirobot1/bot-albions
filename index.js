@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const express = require("express");
 const {
   Client,
   GatewayIntentBits,
@@ -35,15 +36,15 @@ function saveGroups() {
 
 function loadGroups() {
   try {
-    if (fs.existsSync("./groups.json")) {
-      const data = JSON.parse(fs.readFileSync("./groups.json", "utf8"));
+    if (!fs.existsSync("./groups.json")) return;
 
-      for (const id in data) {
-        groups.set(id, data[id]);
-      }
+    const data = JSON.parse(fs.readFileSync("./groups.json", "utf8"));
 
-      console.log(`[Sistema] ${groups.size} grupos carregados.`);
+    for (const id in data) {
+      groups.set(id, data[id]);
     }
+
+    console.log(`[Sistema] ${groups.size} grupos carregados.`);
   } catch (e) {
     console.error("Erro ao carregar:", e);
   }
@@ -51,34 +52,34 @@ function loadGroups() {
 
 /* ================= UTIL ================= */
 
-function getEmoji(roleName){
+function getEmoji(roleName) {
   const name = roleName.toLowerCase();
 
-  if(name.includes("incubus")) return "<:Incubus:1479601055816749212>";
-  if(name.includes("aguia")) return "<:aguia:1479601119612240003>";
-  if(name.includes("chama")) return "<:chamasombra:1479601382318280926>";
-  if(name.includes("dps")) return "<:dps:1479601155582459904>";
-  if(name.includes("foice")) return "<:foice:1479601139338186834>";
-  if(name.includes("fulgurante")) return "<:fulgurante:1479601175157407907>";
-  if(name.includes("healer")) return "<:healer:1479601216831885512>";
-  if(name.includes("mainhealer")) return "<:mainhealer:1479600899067347070>";
-  if(name.includes("maintank")) return "<:maintank:1479600981342949536>";
-  if(name.includes("raizbm")) return "<:raizbm:1479601235014320201>";
-  if(name.includes("oculto")) return "<:oculto:1479601337367789621>";
-  if(name.includes("offtank")) return "<:offtank:1479601014440067082>";
-  if(name.includes("paratempo")) return "<:paratempo:1479601362231886007>";
-  if(name.includes("prisma")) return "<:prisma:1479601196938428597>";
-  if(name.includes("ptheal")) return "<:ptheal:1479601036153983058>";
-  if(name.includes("quebrareinos")) return "<:quebrareinos:1479601271584325633>";
-  if(name.includes("silence")) return "<:silence:1479601096644104376>";
-  if(name.includes("uivo")) return "<:uivo:1479601081544736830>";
-  if(name.includes("tank")) return "<:tank:1479709733559730277>";
-  if(name.includes("badon")) return "<:badon:1479710170132119552>";
-  if(name.includes("raizferrea")) return "<:raizferrea:1480898476324819035>";
-  if(name.includes("arcolongo")) return "<:arcolongo:1480899757189763233>";
-  if(name.includes("susurante")) return "<:susurante:1480899728748314686>";
-  if(name.includes("furabruma")) return "<:furabruma:1480899700549877791>";
-  if(name.includes("bruxo")) return "<:bruxo:1487148891928264735>";
+  if (name.includes("incubus")) return "<:Incubus:1479601055816749212>";
+  if (name.includes("aguia")) return "<:aguia:1479601119612240003>";
+  if (name.includes("chama")) return "<:chamasombra:1479601382318280926>";
+  if (name.includes("dps")) return "<:dps:1479601155582459904>";
+  if (name.includes("foice")) return "<:foice:1479601139338186834>";
+  if (name.includes("fulgurante")) return "<:fulgurante:1479601175157407907>";
+  if (name.includes("healer")) return "<:healer:1479601216831885512>";
+  if (name.includes("mainhealer")) return "<:mainhealer:1479600899067347070>";
+  if (name.includes("maintank")) return "<:maintank:1479600981342949536>";
+  if (name.includes("raizbm")) return "<:raizbm:1479601235014320201>";
+  if (name.includes("oculto")) return "<:oculto:1479601337367789621>";
+  if (name.includes("offtank")) return "<:offtank:1479601014440067082>";
+  if (name.includes("paratempo")) return "<:paratempo:1479601362231886007>";
+  if (name.includes("prisma")) return "<:prisma:1479601196938428597>";
+  if (name.includes("ptheal")) return "<:ptheal:1479601036153983058>";
+  if (name.includes("quebrareinos")) return "<:quebrareinos:1479601271584325633>";
+  if (name.includes("silence")) return "<:silence:1479601096644104376>";
+  if (name.includes("uivo")) return "<:uivo:1479601081544736830>";
+  if (name.includes("tank")) return "<:tank:1479709733559730277>";
+  if (name.includes("badon")) return "<:badon:1479710170132119552>";
+  if (name.includes("raizferrea")) return "<:raizferrea:1480898476324819035>";
+  if (name.includes("arcolongo")) return "<:arcolongo:1480899757189763233>";
+  if (name.includes("susurante")) return "<:susurante:1480899728748314686>";
+  if (name.includes("furabruma")) return "<:furabruma:1480899700549877791>";
+  if (name.includes("bruxo")) return "<:bruxo:1487148891928264735>";
 
   return "⚔️";
 }
@@ -90,9 +91,7 @@ function buildEmbed(group) {
     .setTitle(`⚔️ ${group.title}`)
     .setColor(0x5865F2)
     .setDescription(
-      `📅 Data: ${group.data || "—"}\n` +
-      `🕒 Horário: ${group.hora || "—"}\n` +
-      `📝 ${group.description || "Sem descrição"}`
+      `📅 Data: ${group.data}\n🕒 Horário: ${group.hora}\n📝 ${group.description || "Sem descrição"}`
     );
 
   if (!group.members) return embed;
@@ -103,11 +102,7 @@ function buildEmbed(group) {
     embed.addFields({
       name: `${key}`,
       value: list.length
-        ? list.map(u => {
-            if (!u) return "—";
-            if (typeof u === "string") return `<@${u}>`;
-            return `<@${u.id}>${u.sub ? " (" + u.sub + ")" : ""}`;
-          }).join("\n")
+        ? list.map(u => `<@${u.id}>`).join("\n")
         : "—",
       inline: true
     });
@@ -121,8 +116,6 @@ function buildEmbed(group) {
 function buildButtons(group) {
   const rows = [];
   let row = new ActionRowBuilder();
-
-  if (!group.members) return rows;
 
   for (const key in group.members) {
     const btn = new ButtonBuilder()
@@ -142,7 +135,7 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= DGAVA ================= */
+/* ================= DGAVA FULL ================= */
 
 const DGAVA_CLASSES = [
   { name: "MAIN_TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
@@ -183,11 +176,7 @@ function buildDgavaEmbed(event) {
     embed.addFields({
       name: `${c.emoji} ${c.name}`,
       value: list.length
-        ? list.map(u => {
-            const id = u.id || u;
-            const sub = u.sub ? ` (${u.sub})` : "";
-            return `<@${id}>${sub}`;
-          }).join("\n")
+        ? list.map(u => `<@${u.id}> ${u.sub ? `(${u.sub})` : ""}`).join("\n")
         : "—",
       inline: true
     });
@@ -196,7 +185,7 @@ function buildDgavaEmbed(event) {
   return embed;
 }
 
-/* ================= BOTÕES ================= */
+/* ================= BUTTONS ================= */
 
 function buildDgavaButtons() {
   const rows = [];
@@ -221,7 +210,7 @@ function buildDgavaButtons() {
   return rows;
 }
 
-/* ================= MENU DPS ================= */
+/* ================= DPS MENU ================= */
 
 function buildDpsMenu() {
   return new ActionRowBuilder().addComponents(
@@ -238,27 +227,21 @@ client.once(Events.ClientReady, async () => {
   console.log(`Bot online ${client.user.tag}`);
   loadGroups();
 
-const commands = [
-  new SlashCommandBuilder()
-    .setName("dgavafull")
-    .setDescription("Criar DGAVA FULL RAID")
-    .addStringOption(o =>
-      o.setName("data")
-        .setDescription("DD/MM/AAAA")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("hora")
-        .setDescription("HH:MM")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descrição do evento")
-        .setRequired(true)
-    )
-].map(c => c.toJSON());
-  
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("dgavafull")
+      .setDescription("Criar DGAVA FULL RAID")
+      .addStringOption(o =>
+        o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("HH:MM").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição").setRequired(true)
+      )
+  ].map(c => c.toJSON());
+
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
@@ -268,89 +251,92 @@ const commands = [
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
+  try {
 
-  if (i.isChatInputCommand() && i.commandName === "dgavafull") {
+    /* CREATE */
+    if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
-    const event = {
-      data: i.options.getString("data"),
-      hora: i.options.getString("hora"),
-      description: i.options.getString("descricao"),
-      members: {},
-      creatorId: i.user.id
-    };
+      const event = {
+        data: i.options.getString("data"),
+        hora: i.options.getString("hora"),
+        description: i.options.getString("descricao"),
+        members: {},
+        creatorId: i.user.id
+      };
 
-    for (const c of DGAVA_CLASSES) {
-      event.members[c.name] = [];
+      for (const c of DGAVA_CLASSES) {
+        event.members[c.name] = [];
+      }
+
+      const msg = await i.reply({
+        embeds: [buildDgavaEmbed(event)],
+        components: buildDgavaButtons(),
+        fetchReply: true
+      });
+
+      groups.set(msg.id, event);
+      saveGroups();
     }
 
-    const msg = await i.reply({
-      embeds: [buildDgavaEmbed(event)],
-      components: buildDgavaButtons(),
-      fetchReply: true
-    });
+    /* BUTTONS */
+    if (i.isButton() && i.customId.startsWith("dgava_")) {
 
-    groups.set(msg.id, event);
-    saveGroups();
-  }
+      const event = groups.get(i.message.id);
+      if (!event) return;
 
-  if (i.isButton() && i.customId.startsWith("dgava_")) {
+      const role = i.customId.replace("dgava_", "");
 
-    const event = groups.get(i.message.id);
-    if (!event) return;
+      for (const c of DGAVA_CLASSES) {
+        event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
+      }
 
-    const role = i.customId.replace("dgava_", "");
+      if (role === "DPS") {
+        return i.update({
+          embeds: [buildDgavaEmbed(event)],
+          components: [...buildDgavaButtons(), buildDpsMenu()]
+        });
+      }
 
-    for (const c of DGAVA_CLASSES) {
-      event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
-    }
+      event.members[role].push({ id: i.user.id, sub: null });
 
-    if (role === "DPS") {
       return i.update({
         embeds: [buildDgavaEmbed(event)],
-        components: [...buildDgavaButtons(), buildDpsMenu()]
+        components: buildDgavaButtons()
       });
     }
 
-    event.members[role].push({ id: i.user.id });
+    /* DPS SELECT */
+    if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
-    return i.update({
-      embeds: [buildDgavaEmbed(event)],
-      components: buildDgavaButtons()
-    });
-  }
+      const event = groups.get(i.message.id);
+      if (!event) return;
 
-  if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
+      const selected = i.values[0];
 
-    const event = groups.get(i.message.id);
-    if (!event) return;
+      for (const c of DGAVA_CLASSES) {
+        event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
+      }
 
-    const selected = i.values[0];
+      event.members["DPS"].push({ id: i.user.id, sub: selected });
 
-    for (const c of DGAVA_CLASSES) {
-      event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
+      return i.reply({
+        content: `DPS selecionado: ${selected}`,
+        ephemeral: true
+      });
     }
 
-    event.members["DPS"].push({
-      id: i.user.id,
-      sub: selected
-    });
-
-    return i.reply({
-      content: `DPS selecionado: ${selected}`,
-      ephemeral: true
-    });
+  } catch (err) {
+    console.error(err);
   }
 });
-
-client.login(process.env.DISCORD_TOKEN);
 
 /* ================= EXPRESS ================= */
 
-const express = require("express");
 const app = express();
+app.get("/", (req, res) => res.send("Albion Bot está online!"));
 
-app.get("/", (req, res) => {
-  res.send("Albion Bot está online!");
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Servidor web ativo");
 });
 
-app.listen(process.env.PORT || 3000);
+client.login(process.env.DISCORD_TOKEN);
