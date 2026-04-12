@@ -106,26 +106,31 @@ function parseDateTime(dateStr, timeStr) {
   const [d, m, y] = dateStr.split("/").map(Number);
   const [h, min] = timeStr.split(":").map(Number);
 
-  // salva como UTC REAL (sem fuso do servidor)
+  // salva como UTC puro SEM ajuste automático do Node
   return new Date(Date.UTC(y, m - 1, d, h, min));
 }
 
 function formatDate(d) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(d);
+  const utc = d.getTime();
+  const offset = -3 * 60; // Brasil UTC-3
+  const local = new Date(utc + offset * 60000);
+
+  const dd = String(local.getUTCDate()).padStart(2, "0");
+  const mm = String(local.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = local.getUTCFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function formatTime(d) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(d);
+  const utc = d.getTime();
+  const offset = -3 * 60; // Brasil UTC-3
+  const local = new Date(utc + offset * 60000);
+
+  const hh = String(local.getUTCHours()).padStart(2, "0");
+  const min = String(local.getUTCMinutes()).padStart(2, "0");
+
+  return `${hh}:${min}`;
 }
 /* ================= EMBED ================= */
 
