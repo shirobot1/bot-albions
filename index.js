@@ -249,29 +249,61 @@ client.once(Events.ClientReady, async () => {
   console.log(`Bot online ${client.user.tag}`);
   loadGroups();
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("criar")
-      .setDescription("Criar grupo")
-      .addStringOption(o => o.setName("tipo").setRequired(true))
-      .addIntegerOption(o => o.setName("jogadores").setRequired(true))
-      .addStringOption(o => o.setName("classes").setRequired(true))
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("horario").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(false)),
+ const commands = [
+  new SlashCommandBuilder()
+    .setName("criar")
+    .setDescription("Criar grupo de conteúdo")
+    .addStringOption(o =>
+      o.setName("tipo")
+        .setDescription("Tipo do conteúdo")
+        .setRequired(true)
+    )
+    .addIntegerOption(o =>
+      o.setName("jogadores")
+        .setDescription("Total de jogadores")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("classes")
+        .setDescription("Ex: tank, healer, dps")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("data")
+        .setDescription("DD/MM/AAAA")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("horario")
+        .setDescription("HH:MM")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("descricao")
+        .setDescription("Descrição do evento")
+        .setRequired(false)
+    ),
 
-    new SlashCommandBuilder()
-      .setName("dgavafull")
-      .setDescription("DGAVA FULL RAID")
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true))
-  ].map(c => c.toJSON());
-
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-});
-
+  new SlashCommandBuilder()
+    .setName("dgavafull")
+    .setDescription("Criar DGAVA FULL RAID")
+    .addStringOption(o =>
+      o.setName("data")
+        .setDescription("DD/MM/AAAA")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("hora")
+        .setDescription("HH:MM")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("descricao")
+        .setDescription("Descrição do raid")
+        .setRequired(true)
+    )
+].map(c => c.toJSON());
+  
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
