@@ -28,7 +28,6 @@ function saveGroups() {
   try {
     const data = Object.fromEntries(groups);
     fs.writeFileSync("./groups.json", JSON.stringify(data, null, 2));
-    console.log(`[Sistema] Grupos salvos (${groups.size})`);
   } catch (e) {
     console.error("Erro ao salvar:", e);
   }
@@ -84,7 +83,7 @@ function getEmoji(roleName){
   return "⚔️";
 }
 
-/* ================= EMBED ORIGINAL ================= */
+/* ================= EMBED ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
@@ -104,7 +103,11 @@ function buildEmbed(group) {
     embed.addFields({
       name: `${key}`,
       value: list.length
-        ? list.map(u => `<@${u.id || u}>`).join("\n")
+        ? list.map(u => {
+            if (!u) return "—";
+            if (typeof u === "string") return `<@${u}>`;
+            return `<@${u.id}>${u.sub ? " (" + u.sub + ")" : ""}`;
+          }).join("\n")
         : "—",
       inline: true
     });
@@ -113,7 +116,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES ORIGINAL ================= */
+/* ================= BOTÕES ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -139,7 +142,7 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= DGAVA FULL ================= */
+/* ================= DGAVA ================= */
 
 const DGAVA_CLASSES = [
   { name: "MAIN_TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
@@ -172,9 +175,7 @@ function buildDgavaEmbed(event) {
   const embed = new EmbedBuilder()
     .setTitle("⚔️ DGAVA FULL RAID")
     .setColor(0xff0000)
-    .setDescription(
-      `📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.description}`
-    );
+    .setDescription(`📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.description}`);
 
   for (const c of DGAVA_CLASSES) {
     const list = event.members?.[c.name] || [];
@@ -182,7 +183,11 @@ function buildDgavaEmbed(event) {
     embed.addFields({
       name: `${c.emoji} ${c.name}`,
       value: list.length
-        ? list.map(u => `<@${u.id}>`).join("\n")
+        ? list.map(u => {
+            const id = u.id || u;
+            const sub = u.sub ? ` (${u.sub})` : "";
+            return `<@${id}>${sub}`;
+          }).join("\n")
         : "—",
       inline: true
     });
@@ -191,7 +196,7 @@ function buildDgavaEmbed(event) {
   return embed;
 }
 
-/* ================= DGAVA BUTTONS ================= */
+/* ================= BOTÕES ================= */
 
 function buildDgavaButtons() {
   const rows = [];
@@ -216,7 +221,7 @@ function buildDgavaButtons() {
   return rows;
 }
 
-/* ================= DPS MENU ================= */
+/* ================= MENU DPS ================= */
 
 function buildDpsMenu() {
   return new ActionRowBuilder().addComponents(
@@ -248,11 +253,10 @@ client.once(Events.ClientReady, async () => {
   console.log("Comandos registrados.");
 });
 
-/* ================= INTERAÇÕES (CORRETO FULL) ================= */
+/* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
 
-  /* ===== DGAVA CREATE ===== */
   if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
     const event = {
@@ -277,7 +281,6 @@ client.on("interactionCreate", async i => {
     saveGroups();
   }
 
-  /* ===== DGAVA BUTTONS ===== */
   if (i.isButton() && i.customId.startsWith("dgava_")) {
 
     const event = groups.get(i.message.id);
@@ -296,7 +299,7 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    event.members[role].push(i.user);
+    event.members[role].push({ id: i.user.id });
 
     return i.update({
       embeds: [buildDgavaEmbed(event)],
@@ -304,7 +307,6 @@ client.on("interactionCreate", async i => {
     });
   }
 
-  /* ===== DPS SELECT ===== */
   if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
     const event = groups.get(i.message.id);
@@ -328,6 +330,8 @@ client.on("interactionCreate", async i => {
   }
 });
 
+client.login(process.env.DISCORD_TOKEN);
+
 /* ================= EXPRESS ================= */
 
 const express = require("express");
@@ -337,7 +341,4 @@ app.get("/", (req, res) => {
   res.send("Albion Bot está online!");
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor web ativo na porta " + PORT));
-
-client.login(process.env.DISCORD_TOKEN);
+app.listen(process.env.PORT || 3000);
