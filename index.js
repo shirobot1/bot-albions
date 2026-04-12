@@ -84,17 +84,15 @@ function getEmoji(roleName) {
   return "⚔️";
 }
 
-/* ================= EMBED ================= */
+/* ================= EMBED GENÉRICO ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${group.title || "EVENTO"}`)
     .setColor(0x5865F2)
     .setDescription(
-      `📅 Data: ${group.data}\n🕒 Horário: ${group.hora}\n📝 ${group.description || "Sem descrição"}`
+      `📅 Data: ${group.data}\n🕒 Hora: ${group.hora}\n📝 ${group.description || "Sem descrição"}`
     );
-
-  if (!group.members) return embed;
 
   for (const key in group.members) {
     const list = group.members[key] || [];
@@ -111,7 +109,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES ================= */
+/* ================= BOTÕES GENÉRICOS ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -153,74 +151,6 @@ const DGAVA_CLASSES = [
   { name: "DPS", emoji: "<:DPS:1492631692823891998>" }
 ];
 
-const DPS_SUBCLASSES = [
-  { label: "FROST", value: "FROST", emoji: "<:FROST:1492689983901929572>" },
-  { label: "FULGURANTE", value: "FULGURANTE", emoji: "<:FULGURANTE:1492688810180608010>" },
-  { label: "FOICE DE CRISTAL", value: "FOICE", emoji: "<:FOICE_DE_CRISTAL:1492688757583777905>" },
-  { label: "AGUIA", value: "AGUIA", emoji: "<:AGUIA:1492688099459727390>" },
-  { label: "BESTA LEVE", value: "BESTA", emoji: "<:BESTALEVE:1492688194511306953>" },
-  { label: "RAIZ DPS", value: "RAIZ_DPS", emoji: "<:RAIZ_DPS:1492693786625708244>" }
-];
-
-/* ================= DGAVA EMBED ================= */
-
-function buildDgavaEmbed(event) {
-  const embed = new EmbedBuilder()
-    .setTitle("⚔️ DGAVA FULL RAID")
-    .setColor(0xff0000)
-    .setDescription(`📅 ${event.data}\n🕒 ${event.hora}\n📝 ${event.description}`);
-
-  for (const c of DGAVA_CLASSES) {
-    const list = event.members?.[c.name] || [];
-
-    embed.addFields({
-      name: `${c.emoji} ${c.name}`,
-      value: list.length
-        ? list.map(u => `<@${u.id}> ${u.sub ? `(${u.sub})` : ""}`).join("\n")
-        : "—",
-      inline: true
-    });
-  }
-
-  return embed;
-}
-
-/* ================= BUTTONS ================= */
-
-function buildDgavaButtons() {
-  const rows = [];
-  let row = new ActionRowBuilder();
-
-  for (const c of DGAVA_CLASSES) {
-    const btn = new ButtonBuilder()
-      .setCustomId("dgava_" + c.name)
-      .setLabel(c.name)
-      .setEmoji(c.emoji)
-      .setStyle(ButtonStyle.Primary);
-
-    if (row.components.length === 5) {
-      rows.push(row);
-      row = new ActionRowBuilder();
-    }
-
-    row.addComponents(btn);
-  }
-
-  rows.push(row);
-  return rows;
-}
-
-/* ================= DPS MENU ================= */
-
-function buildDpsMenu() {
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("dgava_dps")
-      .setPlaceholder("Escolha sua subclasse DPS")
-      .addOptions(DPS_SUBCLASSES)
-  );
-}
-
 /* ================= READY ================= */
 
 client.once(Events.ClientReady, async () => {
@@ -243,11 +173,12 @@ client.once(Events.ClientReady, async () => {
 
     new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar evento manual com emojis do servidor")
+      .setDescription("Criar evento manual com emojis do Discord")
       .addStringOption(o =>
-        o.setName("classes")
-          .setDescription("Ex: <:MAIN_TANK:ID>, <:MAIN_HEALER:ID>")
-          .setRequired(true)
+        o.setName("titulo").setDescription("Título").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("classes").setDescription("Cole os emojis do Discord").setRequired(true)
       )
       .addStringOption(o =>
         o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
@@ -271,7 +202,7 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* DGAVA */
+    /* DGAVA FULL */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
       const event = {
@@ -287,7 +218,7 @@ client.on("interactionCreate", async i => {
       }
 
       const msg = await i.reply({
-        embeds: [buildDgavaEmbed(event)],
+        embeds: [buildEmbed(event)],
         components: buildDgavaButtons(),
         fetchReply: true
       });
@@ -296,45 +227,52 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    /* CRIAR */
+    /* ================= CRIAR (CORRIGIDO) ================= */
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
-      await i.deferReply();
+      try {
+        await i.deferReply();
 
-      const raw = i.options.getString("classes");
+        const titulo = i.options.getString("titulo");
+        const classesRaw = i.options.getString("classes");
+        const data = i.options.getString("data");
+        const hora = i.options.getString("hora");
+        const descricao = i.options.getString("descricao");
 
-      const event = {
-        title: "EVENTO PERSONALIZADO",
-        data: i.options.getString("data"),
-        hora: i.options.getString("hora"),
-        description: i.options.getString("descricao"),
-        members: {}
-      };
+        const event = {
+          title: titulo,
+          data,
+          hora,
+          description: descricao,
+          members: {}
+        };
 
-      const parts = raw.split(",");
+        const emojis = classesRaw.match(/<:[a-zA-Z0-9_]+:\d+>/g) || [];
 
-      for (const part of parts) {
-        const clean = part.trim();
-        const match = clean.match(/<:([a-zA-Z0-9_]+):\d+>/);
+        for (const emoji of emojis) {
+          const name = emoji.split(":")[1];
+          event.members[name] = [];
+        }
 
-        const name = match ? match[1] : clean.toUpperCase();
+        const msg = await i.editReply({
+          embeds: [buildEmbed(event)],
+          components: buildButtons(event),
+          fetchReply: true
+        });
 
-        // 🔥 FIX: agora salva emoji também
-        event.members[name] = [{
-          id: "preview",
-          sub: null,
-          emoji: clean
-        }];
+        groups.set(msg.id, event);
+        saveGroups();
+
+      } catch (err) {
+        console.error("ERRO /criar:", err);
+
+        if (!i.replied) {
+          await i.reply({
+            content: "Erro ao criar evento.",
+            ephemeral: true
+          });
+        }
       }
-
-      const msg = await i.editReply({
-        embeds: [buildEmbed(event)],
-        components: buildButtons(event),
-        fetchReply: true
-      });
-
-      groups.set(msg.id, event);
-      saveGroups();
     }
 
     /* BUTTONS */
@@ -349,46 +287,16 @@ client.on("interactionCreate", async i => {
         event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
       }
 
-      if (role === "DPS") {
-        return i.update({
-          embeds: [buildDgavaEmbed(event)],
-          components: [...buildDgavaButtons(), buildDpsMenu()]
-        });
-      }
-
       event.members[role].push({ id: i.user.id, sub: null });
 
       return i.update({
-        embeds: [buildDgavaEmbed(event)],
+        embeds: [buildEmbed(event)],
         components: buildDgavaButtons()
       });
     }
 
-    /* DPS MENU */
-    if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
-
-      const event = groups.get(i.message.id);
-      if (!event) return;
-
-      const selected = i.values[0];
-
-      for (const c of DGAVA_CLASSES) {
-        event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
-      }
-
-      event.members["DPS"].push({ id: i.user.id, sub: selected });
-
-      return i.update({
-        embeds: [buildDgavaEmbed(event)],
-        components: [...buildDgavaButtons(), buildDpsMenu()]
-      });
-    }
-
   } catch (err) {
-    console.error("INTERACTION ERROR:", err);
-
-    if (i.deferred || i.replied) return;
-    await i.reply({ content: "Erro na interação.", ephemeral: true }).catch(() => {});
+    console.error(err);
   }
 });
 
