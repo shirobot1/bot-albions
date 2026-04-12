@@ -84,7 +84,20 @@ function getEmoji(roleName) {
   return "⚔️";
 }
 
-/* ================= EMBED ================= */
+/* ================= EMBED PERSONALIZADO (/criar FIX EMOJI) ================= */
+
+function resolveEmoji(name) {
+  const n = name.toLowerCase();
+
+  if (n.includes("main_tank")) return "<:MAIN_TANK:1492631415953686559>";
+  if (n.includes("off_tank")) return "<:OFF_TANK:1492631605166997694>";
+  if (n.includes("arcano")) return "<:ARCANO_ELEVADO:1492689272887705681>";
+  if (n.includes("healer")) return "<:MAIN_HEALER:1492688340296925225>";
+  if (n.includes("bruxo")) return "<:BRUXO:1492688682350678157>";
+  if (n.includes("dps")) return "<:DPS:1492631692823891998>";
+
+  return "⚔️";
+}
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
@@ -100,7 +113,7 @@ function buildEmbed(group) {
     const list = group.members[key] || [];
 
     embed.addFields({
-      name: `${key}`,
+      name: `${resolveEmoji(key)} ${key}`,
       value: list.length
         ? list.map(u => `<@${u.id}>`).join("\n")
         : "—",
@@ -242,22 +255,22 @@ client.once(Events.ClientReady, async () => {
       ),
 
     new SlashCommandBuilder()
-  .setName("criar")
-  .setDescription("Criar evento manual com emojis do servidor")
-  .addStringOption(o =>
-    o.setName("classes")
-      .setDescription("Ex: <:MAIN_TANK:ID>, <:MAIN_HEALER:ID>")
-      .setRequired(true)
-  )
-  .addStringOption(o =>
-    o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
-  )
-  .addStringOption(o =>
-    o.setName("hora").setDescription("HH:MM").setRequired(true)
-  )
-  .addStringOption(o =>
-    o.setName("descricao").setDescription("Descrição").setRequired(true)
-  )
+      .setName("criar")
+      .setDescription("Criar evento manual com emojis do servidor")
+      .addStringOption(o =>
+        o.setName("classes")
+          .setDescription("Ex: <:MAIN_TANK:ID>, <:MAIN_HEALER:ID>")
+          .setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("HH:MM").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição").setRequired(true)
+      )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -265,12 +278,13 @@ client.once(Events.ClientReady, async () => {
 
   console.log("Comandos registrados.");
 });
+
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
   try {
 
-    /* CREATE */
+    /* ================= DGAVA FULL ================= */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
       const event = {
@@ -278,7 +292,8 @@ client.on("interactionCreate", async i => {
         hora: i.options.getString("hora"),
         description: i.options.getString("descricao"),
         members: {},
-        creatorId: i.user.id
+        creatorId: i.user.id,
+        title: "DGAVA FULL"
       };
 
       for (const c of DGAVA_CLASSES) {
@@ -294,50 +309,45 @@ client.on("interactionCreate", async i => {
       groups.set(msg.id, event);
       saveGroups();
     }
-    
+
+    /* ================= /criar FIX ================= */
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
-  const raw = i.options.getString("classes");
+      const raw = i.options.getString("classes");
 
-  const event = {
-    data: i.options.getString("data"),
-    hora: i.options.getString("hora"),
-    description: i.options.getString("descricao"),
-    members: {},
-    creatorId: i.user.id,
-    title: "EVENTO PERSONALIZADO"
-  };
+      const event = {
+        title: "EVENTO PERSONALIZADO",
+        data: i.options.getString("data"),
+        hora: i.options.getString("hora"),
+        description: i.options.getString("descricao"),
+        members: {},
+        creatorId: i.user.id
+      };
 
-  const parts = raw.split(",");
+      const parts = raw.split(",");
 
-  for (const part of parts) {
-    const clean = part.trim();
+      for (const part of parts) {
+        const clean = part.trim();
 
-    const match = clean.match(/<:([a-zA-Z0-9_]+):\d+>/);
+        const match = clean.match(/<:([a-zA-Z0-9_]+):\d+>/);
 
-    let name;
+        let name = match ? match[1].toUpperCase() : clean.toUpperCase();
 
-    if (match) {
-      name = match[1]; // 🔥 CORRETO (nome limpo do emoji)
-    } else {
-      name = clean.toUpperCase();
+        event.members[name] = [];
+      }
+
+      const msg = await i.reply({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event),
+        fetchReply: true
+      });
+
+      // 🔥 CORREÇÃO PRINCIPAL (INTERAÇÃO)
+      groups.set(msg.id, event);
+      saveGroups();
     }
 
-    event.members[name] = [];
-  }
-
-  const msg = await i.reply({
-    embeds: [buildEmbed(event)],
-    components: buildButtons(event),
-    fetchReply: true
-  });
-
-  // 🔥 IMPORTANTE: usa ID da mensagem (igual DGAVA FULL)
-  groups.set(msg.id, event);
-  saveGroups();
-}
-
-    /* BUTTONS */
+    /* ================= BUTTONS ================= */
     if (i.isButton() && i.customId.startsWith("dgava_")) {
 
       const event = groups.get(i.message.id);
@@ -364,8 +374,7 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    /* ================= DPS SELECT (CORRIGIDO) ================= */
-
+    /* ================= DPS SELECT ================= */
     if (i.isStringSelectMenu() && i.customId === "dgava_dps") {
 
       const event = groups.get(i.message.id);
@@ -379,7 +388,6 @@ client.on("interactionCreate", async i => {
 
       event.members["DPS"].push({ id: i.user.id, sub: selected });
 
-      // 🔥 FIX PRINCIPAL: agora atualiza o embed corretamente
       return i.update({
         embeds: [buildDgavaEmbed(event)],
         components: [...buildDgavaButtons(), buildDpsMenu()]
