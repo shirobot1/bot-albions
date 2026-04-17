@@ -24,7 +24,7 @@ const client = new Client({
 
 const groups = new Map();
 
-/* ================= DPS ================= */
+/* ================= DPS SUBCLASSES ================= */
 
 const DPS_SUB = {
   FROST: "<:FROST:1492689983901929572>",
@@ -66,13 +66,19 @@ function loadGroups() {
 }
 
 function getTimeRemaining(data, hora) {
-  const [d, m, y] = data.split("/");
-  const [h, min] = hora.split(":");
-  const eventDate = new Date(y, m - 1, d, h, min);
-  const diff = eventDate - new Date();
-  if (diff <= 0) return "Evento iniciado";
-  const minTotal = Math.floor(diff / 60000);
-  return `${Math.floor(minTotal / 60)}h ${minTotal % 60}m`;
+  try {
+    const [d, m, y] = data.split("/");
+    const [h, min] = hora.split(":");
+    const eventDate = new Date(y, m - 1, d, h, min);
+    const diff = eventDate - new Date();
+
+    if (diff <= 0) return "Evento iniciado";
+
+    const minTotal = Math.floor(diff / 60000);
+    return `${Math.floor(minTotal / 60)}h ${minTotal % 60}m`;
+  } catch {
+    return "Data inválida";
+  }
 }
 
 /* ================= EMBED ================= */
@@ -86,10 +92,17 @@ function buildEmbed(group) {
     );
 
   for (const key in group.members) {
+
+    let emoji = "";
+    const found = DGAVA_CLASSES.find(c => c.name === key);
+    if (found) emoji = found.emoji;
+
     embed.addFields({
-      name: key,
+      name: `${emoji} ${key}`,
       value: group.members[key].length
-        ? group.members[key].map(u => `${u.emoji || ""} <@${u.id}>`).join("\n")
+        ? group.members[key]
+            .map(u => `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`)
+            .join("\n")
         : "—",
       inline: true
     });
@@ -189,7 +202,7 @@ function dpsMenu(messageId) {
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("dps_select_" + messageId)
-      .setPlaceholder("Escolha sua subclasse")
+      .setPlaceholder("Escolha sua subclasse DPS")
       .addOptions(
         Object.entries(DPS_SUB).map(([k, v]) => ({
           label: k,
@@ -203,25 +216,42 @@ function dpsMenu(messageId) {
 /* ================= READY ================= */
 
 client.once(Events.ClientReady, async () => {
+  console.log(`Bot online ${client.user.tag}`);
   loadGroups();
   setInterval(checkEvents, 60000);
 
   const commands = [
     new SlashCommandBuilder()
       .setName("dgavafull")
-      .setDescription("Criar DGAVA")
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true)),
+      .setDescription("Criar DG Avalon Full")
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição do evento").setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar evento")
-      .addStringOption(o => o.setName("titulo").setRequired(true))
-      .addStringOption(o => o.setName("classes").setRequired(true))
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true))
+      .setDescription("Criar evento personalizado")
+      .addStringOption(o =>
+        o.setName("titulo").setDescription("Título do evento").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("classes").setDescription("Cole os emojis").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição").setRequired(true)
+      )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -233,7 +263,7 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* /CRIAR */
+    /* CRIAR */
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
       await i.deferReply();
@@ -272,7 +302,7 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    /* /DGAVA */
+    /* DGAVA */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
       const event = {
@@ -313,9 +343,12 @@ client.on("interactionCreate", async i => {
       });
     }
 
+    /* SELECT DPS */
     if (i.isStringSelectMenu() && i.customId.startsWith("dps_select_")) {
+
       const messageId = i.customId.replace("dps_select_", "");
       const event = groups.get(messageId);
+      if (!event) return;
 
       const role = i.values[0];
 
@@ -330,10 +363,18 @@ client.on("interactionCreate", async i => {
 
       saveGroups();
 
+      const channel = await client.channels.fetch(event.channelId);
+      const msg = await channel.messages.fetch(messageId);
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: msg.components
+      });
+
       return i.update({ content: "Subclasse selecionada!", components: [] });
     }
 
-    /* BOTÕES GERAIS */
+    /* BOTÕES */
     if (i.isButton() && (i.customId.startsWith("join_") || i.customId.startsWith("dgava_"))) {
 
       const event = groups.get(i.message.id);
@@ -348,6 +389,7 @@ client.on("interactionCreate", async i => {
       }
 
       event.members[role].push({ id: i.user.id });
+
       saveGroups();
 
       return i.update({
@@ -359,9 +401,11 @@ client.on("interactionCreate", async i => {
     /* SAIR */
     if (i.isButton() && i.customId === "leave_event") {
       const event = groups.get(i.message.id);
+
       for (const key in event.members) {
         event.members[key] = event.members[key].filter(u => u.id !== i.user.id);
       }
+
       saveGroups();
 
       return i.update({
@@ -393,7 +437,7 @@ function checkEvents() {
       const channel = client.channels.cache.get(event.channelId);
       if (!channel) continue;
 
-      channel.send(`@everyone ⏰ Evento começa em 10 minutos!`);
+      channel.send(`@everyone ⏰ Evento **${event.title}** começa em 10 minutos!`);
       event.notified = true;
       saveGroups();
     }
