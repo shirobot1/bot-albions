@@ -135,6 +135,22 @@ function buildButtons(group) {
 
 /* ================= DGAVA ================= */
 
+const DGAVA_CLASSES = [
+  { name: "MAIN_TANK" },
+  { name: "OFF_TANK" },
+  { name: "ARCANO_ELEVADO" },
+  { name: "ARCANO_SILENCE" },
+  { name: "MAIN_HEALER" },
+  { name: "BRUXO" },
+  { name: "RAIZ_PT_HEAL" },
+  { name: "RAIZ_BM" },
+  { name: "QUEBRA_REINOS" },
+  { name: "INCUBUS" },
+  { name: "OCULTO" },
+  { name: "SCOUT" },
+  { name: "DPS" }
+];
+
 function buildDgavaButtons() {
   const rows = [];
   let row = new ActionRowBuilder();
@@ -157,22 +173,6 @@ function buildDgavaButtons() {
   return rows;
 }
 
-const DGAVA_CLASSES = [
-  { name: "MAIN_TANK" },
-  { name: "OFF_TANK" },
-  { name: "ARCANO_ELEVADO" },
-  { name: "ARCANO_SILENCE" },
-  { name: "MAIN_HEALER" },
-  { name: "BRUXO" },
-  { name: "RAIZ_PT_HEAL" },
-  { name: "RAIZ_BM" },
-  { name: "QUEBRA_REINOS" },
-  { name: "INCUBUS" },
-  { name: "OCULTO" },
-  { name: "SCOUT" },
-  { name: "DPS" }
-];
-
 /* ================= READY ================= */
 
 client.once(Events.ClientReady, async () => {
@@ -182,19 +182,35 @@ client.once(Events.ClientReady, async () => {
   const commands = [
     new SlashCommandBuilder()
       .setName("dgavafull")
-      .setDescription("Criar DGAVA FULL")
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true)),
+      .setDescription("Criar DGAVA FULL RAID")
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data do evento").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora do evento").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição do evento").setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar evento manual")
-      .addStringOption(o => o.setName("titulo").setRequired(true))
-      .addStringOption(o => o.setName("classes").setRequired(true))
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true))
+      .setDescription("Criar evento manual com emojis")
+      .addStringOption(o =>
+        o.setName("titulo").setDescription("Título").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("classes").setDescription("Cole os emojis do Discord").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição").setRequired(true)
+      )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
