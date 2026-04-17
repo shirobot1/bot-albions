@@ -99,7 +99,6 @@ function buildEmbed(group) {
     );
 
   for (const key in group.members) {
-
     let emoji = "";
     const found = DGAVA_CLASSES.find(c => c.name === key);
     if (found) emoji = found.emoji;
@@ -258,8 +257,6 @@ client.on("interactionCreate", async i => {
       const event = groups.get(messageId);
       if (!event) return;
 
-      await i.deferReply({ ephemeral: true });
-
       const modal = new ModalBuilder()
         .setCustomId("modal_edit_" + messageId)
         .setTitle("Editar Evento");
@@ -303,7 +300,7 @@ client.on("interactionCreate", async i => {
       return i.editReply({ content: "Evento atualizado!" });
     }
 
-    /* === TODO RESTO DO SEU CÓDIGO PERMANECE IGUAL === */
+    /* === RESTO DO CÓDIGO IGUAL AO SEU === */
 
   } catch (err) {
     console.error(err);
