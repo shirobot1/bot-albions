@@ -117,7 +117,7 @@ function buildButtons(group) {
         .setStyle(ButtonStyle.Danger)
         .setEmoji("🚪"),
       new ButtonBuilder()
-        .setCustomId("edit_event")
+        .setCustomId("edit_" + group.messageId)
         .setLabel("Editar")
         .setStyle(ButtonStyle.Secondary)
         .setEmoji("✏️")
@@ -127,23 +127,36 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= DGAVA ================= */
+/* ================= DGAVA COM EMOJIS ================= */
 
 const DGAVA_CLASSES = [
-  "MAIN_TANK","OFF_TANK","ARCANO_ELEVADO","ARCANO_SILENCE",
-  "MAIN_HEALER","BRUXO","RAIZ_PT_HEAL","RAIZ_BM",
-  "QUEBRA_REINOS","INCUBUS","OCULTO","SCOUT","DPS"
+  { name: "MAIN_TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
+  { name: "OFF_TANK", emoji: "<:OFF_TANK:1492631605166997694>" },
+  { name: "ARCANO_ELEVADO", emoji: "<:ARCANO_ELEVADO:1492689272887705681>" },
+  { name: "ARCANO_SILENCE", emoji: "<:ARCANO_SILENCE:1492689883301417051>" },
+  { name: "MAIN_HEALER", emoji: "<:MAIN_HEALER:1492688340296925225>" },
+  { name: "BRUXO", emoji: "<:BRUXO:1492688682350678157>" },
+  { name: "RAIZ_PT_HEAL", emoji: "<:RAIZ_PT_HEAL:1492689727982141531>" },
+  { name: "RAIZ_BM", emoji: "<:RAIZ_BM:1492689129589313566>" },
+  { name: "QUEBRA_REINOS", emoji: "<:QUEBRA_REINOS:1492689509958287621>" },
+  { name: "INCUBUS", emoji: "<:INCUBUS:1492688930162872460>" },
+  { name: "OCULTO", emoji: "<:OCULTO:1492692707846389850>" },
+  { name: "SCOUT", emoji: "<:SCOUT:1492692746203299970>" },
+  { name: "DPS", emoji: "<:DPS:1492631692823891998>" }
 ];
 
-function buildDgavaButtons() {
+function buildDgavaButtons(group) {
   const rows = [];
   let row = new ActionRowBuilder();
 
   for (const c of DGAVA_CLASSES) {
+    const id = c.emoji.match(/\d+/)[0];
+
     const btn = new ButtonBuilder()
-      .setCustomId("dgava_" + c)
-      .setLabel(c)
-      .setStyle(ButtonStyle.Secondary);
+      .setCustomId("dgava_" + c.name)
+      .setLabel(c.name)
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji(id);
 
     if (row.components.length === 5) {
       rows.push(row);
@@ -161,7 +174,12 @@ function buildDgavaButtons() {
         .setCustomId("leave_event")
         .setLabel("Sair")
         .setStyle(ButtonStyle.Danger)
-        .setEmoji("🚪")
+        .setEmoji("🚪"),
+      new ButtonBuilder()
+        .setCustomId("edit_" + group.messageId)
+        .setLabel("Editar")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("✏️")
     )
   );
 
@@ -173,7 +191,6 @@ function buildDgavaButtons() {
 client.once(Events.ClientReady, async () => {
   console.log(`Bot online ${client.user.tag}`);
   loadGroups();
-
   setInterval(checkEvents, 60000);
 
   const commands = [
@@ -203,9 +220,8 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* CRIAR NORMAL */
+    /* CRIAR */
     if (i.isChatInputCommand() && i.commandName === "criar") {
-
       await i.deferReply();
 
       const event = {
@@ -227,11 +243,17 @@ client.on("interactionCreate", async i => {
 
       const msg = await i.editReply({
         embeds: [buildEmbed(event)],
-        components: buildButtons(event),
+        components: buildButtons({ ...event, messageId: "temp" }),
         fetchReply: true
       });
 
       event.messageId = msg.id;
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event)
+      });
+
       groups.set(msg.id, event);
       saveGroups();
     }
@@ -249,25 +271,31 @@ client.on("interactionCreate", async i => {
         notified: false
       };
 
-      DGAVA_CLASSES.forEach(c => event.members[c] = []);
+      DGAVA_CLASSES.forEach(c => event.members[c.name] = []);
 
       const msg = await i.reply({
         embeds: [buildEmbed(event)],
-        components: buildDgavaButtons(),
+        components: buildDgavaButtons({ ...event, messageId: "temp" }),
         fetchReply: true
       });
 
       event.messageId = msg.id;
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: buildDgavaButtons(event)
+      });
+
       groups.set(msg.id, event);
       saveGroups();
     }
 
-    /* BOTÕES ENTRAR */
-    if (i.isButton() && i.customId.startsWith("join_")) {
+    /* ENTRAR */
+    if (i.isButton() && (i.customId.startsWith("join_") || i.customId.startsWith("dgava_"))) {
       const event = groups.get(i.message.id);
       if (!event) return;
 
-      const role = i.customId.replace("join_", "");
+      const role = i.customId.replace("join_", "").replace("dgava_", "");
 
       for (const key in event.members) {
         event.members[key] = event.members[key].filter(u => u.id !== i.user.id);
@@ -278,27 +306,7 @@ client.on("interactionCreate", async i => {
 
       return i.update({
         embeds: [buildEmbed(event)],
-        components: buildButtons(event)
-      });
-    }
-
-    /* BOTÕES DGAVA */
-    if (i.isButton() && i.customId.startsWith("dgava_")) {
-      const event = groups.get(i.message.id);
-      if (!event) return;
-
-      const role = i.customId.replace("dgava_", "");
-
-      for (const key in event.members) {
-        event.members[key] = event.members[key].filter(u => u.id !== i.user.id);
-      }
-
-      event.members[role].push({ id: i.user.id });
-      saveGroups();
-
-      return i.update({
-        embeds: [buildEmbed(event)],
-        components: buildDgavaButtons()
+        components: i.message.components
       });
     }
 
@@ -317,6 +325,57 @@ client.on("interactionCreate", async i => {
         embeds: [buildEmbed(event)],
         components: i.message.components
       });
+    }
+
+    /* EDITAR */
+    if (i.isButton() && i.customId.startsWith("edit_")) {
+
+      const messageId = i.customId.replace("edit_", "");
+
+      const modal = new ModalBuilder()
+        .setCustomId("modal_edit_" + messageId)
+        .setTitle("Editar Evento");
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("titulo").setLabel("Título").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("data").setLabel("Data").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("hora").setLabel("Hora").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("desc").setLabel("Descrição").setStyle(TextInputStyle.Paragraph)
+        )
+      );
+
+      return i.showModal(modal);
+    }
+
+    if (i.isModalSubmit() && i.customId.startsWith("modal_edit_")) {
+
+      const messageId = i.customId.replace("modal_edit_", "");
+      const event = groups.get(messageId);
+      if (!event) return i.reply({ content: "Evento não encontrado", ephemeral: true });
+
+      event.title = i.fields.getTextInputValue("titulo");
+      event.data = i.fields.getTextInputValue("data");
+      event.hora = i.fields.getTextInputValue("hora");
+      event.description = i.fields.getTextInputValue("desc");
+
+      saveGroups();
+
+      const channel = await client.channels.fetch(event.channelId);
+      const msg = await channel.messages.fetch(messageId);
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: msg.components
+      });
+
+      return i.reply({ content: "Evento atualizado!", ephemeral: true });
     }
 
   } catch (err) {
