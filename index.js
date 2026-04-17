@@ -11,47 +11,71 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  Events
+  Events,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require("discord.js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-client.on("error", console.error);
-
 const groups = new Map();
 
-/* ================= SALVAR / CARREGAR ================= */
+/* ================= SALVAR ================= */
 
 function saveGroups() {
-  try {
-    fs.writeFileSync("./groups.json", JSON.stringify(Object.fromEntries(groups), null, 2));
-  } catch (e) {
-    console.error(e);
-  }
+  fs.writeFileSync("./groups.json", JSON.stringify(Object.fromEntries(groups), null, 2));
 }
 
 function loadGroups() {
   if (!fs.existsSync("./groups.json")) return;
-  const data = JSON.parse(fs.readFileSync("./groups.json", "utf8"));
+  const data = JSON.parse(fs.readFileSync("./groups.json"));
   for (const id in data) groups.set(id, data[id]);
+}
+
+/* ================= TEMPO ================= */
+
+function getTimeRemaining(data, hora) {
+  try {
+    const [d, m, y] = data.split("/");
+    const [h, min] = hora.split(":");
+
+    const eventDate = new Date(y, m - 1, d, h, min);
+    const now = new Date();
+
+    const diff = eventDate - now;
+    if (diff <= 0) return "Evento iniciado";
+
+    const totalMin = Math.floor(diff / 60000);
+    const hours = Math.floor(totalMin / 60);
+    const minutes = totalMin % 60;
+
+    return `${hours}h ${minutes}m`;
+  } catch {
+    return "Data inválida";
+  }
 }
 
 /* ================= EMBED ================= */
 
 function buildEmbed(group) {
+  const tempo = getTimeRemaining(group.data, group.hora);
+
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${group.title}`)
     .setColor(0x5865F2)
-    .setDescription(`📅 ${group.data}\n🕒 ${group.hora}\n📝 ${group.description}`);
+    .setDescription(
+      `📅 ${group.data}\n🕒 ${group.hora}\n⏳ Começa em: ${tempo}\n📝 ${group.description}`
+    );
 
   for (const key in group.members) {
-    const list = group.members[key];
-
     embed.addFields({
       name: key,
-      value: list.length ? list.map(u => `<@${u.id}>`).join("\n") : "—",
+      value: group.members[key].length
+        ? group.members[key].map(u => `<@${u.id}>`).join("\n")
+        : "—",
       inline: true
     });
   }
@@ -59,24 +83,21 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES (CORRIGIDO COM EMOJI) ================= */
+/* ================= BOTÕES ================= */
 
 function buildButtons(group) {
   const rows = [];
   let row = new ActionRowBuilder();
 
   for (const key in group.members) {
-
     const emojiMatch = key.match(/<:[^:]+:(\d+)>/);
 
     const btn = new ButtonBuilder()
       .setCustomId("join_" + key)
-      .setLabel(key.replace(/<:[^:]+:\d+>\s*/, "")) // remove emoji do texto
+      .setLabel(key.replace(/<:[^:]+:\d+>\s*/, ""))
       .setStyle(ButtonStyle.Primary);
 
-    if (emojiMatch) {
-      btn.setEmoji(emojiMatch[1]);
-    }
+    if (emojiMatch) btn.setEmoji(emojiMatch[1]);
 
     if (row.components.length === 5) {
       rows.push(row);
@@ -87,36 +108,22 @@ function buildButtons(group) {
   }
 
   rows.push(row);
-  return rows;
-}
 
-/* ================= DGAVA ================= */
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("leave_event")
+        .setLabel("Sair")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("🚪"),
+      new ButtonBuilder()
+        .setCustomId("edit_event")
+        .setLabel("Editar")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("✏️")
+    )
+  );
 
-const DGAVA_CLASSES = [
-  "MAIN_TANK","OFF_TANK","ARCANO_ELEVADO","ARCANO_SILENCE",
-  "MAIN_HEALER","BRUXO","RAIZ_PT_HEAL","RAIZ_BM",
-  "QUEBRA_REINOS","INCUBUS","OCULTO","SCOUT","DPS"
-];
-
-function buildDgavaButtons() {
-  const rows = [];
-  let row = new ActionRowBuilder();
-
-  for (const c of DGAVA_CLASSES) {
-    const btn = new ButtonBuilder()
-      .setCustomId("dgava_" + c)
-      .setLabel(c)
-      .setStyle(ButtonStyle.Secondary);
-
-    if (row.components.length === 5) {
-      rows.push(row);
-      row = new ActionRowBuilder();
-    }
-
-    row.addComponents(btn);
-  }
-
-  rows.push(row);
   return rows;
 }
 
@@ -126,56 +133,27 @@ client.once(Events.ClientReady, async () => {
   console.log(`Bot online ${client.user.tag}`);
   loadGroups();
 
+  setInterval(checkEvents, 60000);
+
   const commands = [
     new SlashCommandBuilder()
-      .setName("dgavafull")
-      .setDescription("Criar DGAVA FULL")
-      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true)),
-
-    new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar evento com emojis")
+      .setDescription("Criar evento")
       .addStringOption(o => o.setName("titulo").setDescription("Título").setRequired(true))
-      .addStringOption(o => o.setName("classes").setDescription("Cole emojis").setRequired(true))
-      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
+      .addStringOption(o => o.setName("classes").setDescription("Emojis").setRequired(true))
+      .addStringOption(o => o.setName("data").setDescription("DD/MM/YYYY").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("HH:MM").setRequired(true))
       .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-
-  console.log("Comandos registrados");
 });
 
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
   try {
-
-    if (i.isChatInputCommand() && i.commandName === "dgavafull") {
-
-      const event = {
-        title: "DGAVA FULL RAID",
-        data: i.options.getString("data"),
-        hora: i.options.getString("hora"),
-        description: i.options.getString("descricao"),
-        members: {}
-      };
-
-      DGAVA_CLASSES.forEach(c => event.members[c] = []);
-
-      const msg = await i.reply({
-        embeds: [buildEmbed(event)],
-        components: buildDgavaButtons(),
-        fetchReply: true
-      });
-
-      groups.set(msg.id, event);
-      saveGroups();
-    }
 
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
@@ -186,7 +164,9 @@ client.on("interactionCreate", async i => {
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
         description: i.options.getString("descricao"),
-        members: {}
+        members: {},
+        channelId: i.channelId,
+        notified: false
       };
 
       const emojis = i.options.getString("classes").match(/<:[^:]+:\d+>/g) || [];
@@ -202,12 +182,12 @@ client.on("interactionCreate", async i => {
         fetchReply: true
       });
 
+      event.messageId = msg.id;
       groups.set(msg.id, event);
       saveGroups();
     }
 
     if (i.isButton() && i.customId.startsWith("join_")) {
-
       const event = groups.get(i.message.id);
       if (!event) return;
 
@@ -218,6 +198,21 @@ client.on("interactionCreate", async i => {
       }
 
       event.members[role].push({ id: i.user.id });
+      saveGroups();
+
+      return i.update({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event)
+      });
+    }
+
+    if (i.isButton() && i.customId === "leave_event") {
+      const event = groups.get(i.message.id);
+      if (!event) return;
+
+      for (const key in event.members) {
+        event.members[key] = event.members[key].filter(u => u.id !== i.user.id);
+      }
 
       saveGroups();
 
@@ -227,24 +222,45 @@ client.on("interactionCreate", async i => {
       });
     }
 
-    if (i.isButton() && i.customId.startsWith("dgava_")) {
+    if (i.isButton() && i.customId === "edit_event") {
+
+      const modal = new ModalBuilder()
+        .setCustomId("modal_edit")
+        .setTitle("Editar Evento");
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("titulo").setLabel("Título").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("data").setLabel("Data").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("hora").setLabel("Hora").setStyle(TextInputStyle.Short)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId("desc").setLabel("Descrição").setStyle(TextInputStyle.Paragraph)
+        )
+      );
+
+      return i.showModal(modal);
+    }
+
+    if (i.isModalSubmit() && i.customId === "modal_edit") {
 
       const event = groups.get(i.message.id);
       if (!event) return;
 
-      const role = i.customId.replace("dgava_", "");
-
-      DGAVA_CLASSES.forEach(c => {
-        event.members[c] = event.members[c].filter(u => u.id !== i.user.id);
-      });
-
-      event.members[role].push({ id: i.user.id });
+      event.title = i.fields.getTextInputValue("titulo");
+      event.data = i.fields.getTextInputValue("data");
+      event.hora = i.fields.getTextInputValue("hora");
+      event.description = i.fields.getTextInputValue("desc");
 
       saveGroups();
 
       return i.update({
         embeds: [buildEmbed(event)],
-        components: buildDgavaButtons()
+        components: buildButtons(event)
       });
     }
 
@@ -253,7 +269,32 @@ client.on("interactionCreate", async i => {
   }
 });
 
-/* ================= EXPRESS ================= */
+/* ================= AVISO ================= */
+
+function checkEvents() {
+  const now = new Date();
+
+  for (const [id, event] of groups) {
+    if (event.notified) continue;
+
+    const [d, m, y] = event.data.split("/");
+    const [h, min] = event.hora.split(":");
+
+    const eventDate = new Date(y, m - 1, d, h, min);
+    const diff = (eventDate - now) / 60000;
+
+    if (diff <= 10 && diff > 0) {
+      const channel = client.channels.cache.get(event.channelId);
+      if (!channel) continue;
+
+      channel.send(`@everyone ⏰ Evento **${event.title}** começa em 10 minutos!`);
+      event.notified = true;
+      saveGroups();
+    }
+  }
+}
+
+/* ================= WEB ================= */
 
 const app = express();
 app.get("/", (req, res) => res.send("Bot online"));
