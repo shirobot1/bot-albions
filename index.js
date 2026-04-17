@@ -84,7 +84,7 @@ function getEmoji(roleName) {
   return "⚔️";
 }
 
-/* ================= EMBED GENÉRICO ================= */
+/* ================= EMBED ================= */
 
 function buildEmbed(group) {
   const embed = new EmbedBuilder()
@@ -109,7 +109,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES GENÉRICOS ================= */
+/* ================= BOTÕES ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -133,22 +133,44 @@ function buildButtons(group) {
   return rows;
 }
 
-/* ================= DGAVA FULL ================= */
+/* ================= DGAVA ================= */
+
+function buildDgavaButtons() {
+  const rows = [];
+  let row = new ActionRowBuilder();
+
+  for (const c of DGAVA_CLASSES) {
+    const btn = new ButtonBuilder()
+      .setCustomId("dgava_" + c.name)
+      .setLabel(c.name)
+      .setStyle(ButtonStyle.Secondary);
+
+    if (row.components.length === 5) {
+      rows.push(row);
+      row = new ActionRowBuilder();
+    }
+
+    row.addComponents(btn);
+  }
+
+  rows.push(row);
+  return rows;
+}
 
 const DGAVA_CLASSES = [
-  { name: "MAIN_TANK", emoji: "<:MAIN_TANK:1492631415953686559>" },
-  { name: "OFF_TANK", emoji: "<:OFF_TANK:1492631605166997694>" },
-  { name: "ARCANO_ELEVADO", emoji: "<:ARCANO_ELEVADO:1492689272887705681>" },
-  { name: "ARCANO_SILENCE", emoji: "<:ARCANO_SILENCE:1492689883301417051>" },
-  { name: "MAIN_HEALER", emoji: "<:MAIN_HEALER:1492688340296925225>" },
-  { name: "BRUXO", emoji: "<:BRUXO:1492688682350678157>" },
-  { name: "RAIZ_PT_HEAL", emoji: "<:RAIZ_PT_HEAL:1492689727982141531>" },
-  { name: "RAIZ_BM", emoji: "<:RAIZ_BM:1492689129589313566>" },
-  { name: "QUEBRA_REINOS", emoji: "<:QUEBRA_REINOS:1492689509958287621>" },
-  { name: "INCUBUS", emoji: "<:INCUBUS:1492688930162872460>" },
-  { name: "OCULTO", emoji: "<:OCULTO:1492692707846389850>" },
-  { name: "SCOUT", emoji: "<:SCOUT:1492692746203299970>" },
-  { name: "DPS", emoji: "<:DPS:1492631692823891998>" }
+  { name: "MAIN_TANK" },
+  { name: "OFF_TANK" },
+  { name: "ARCANO_ELEVADO" },
+  { name: "ARCANO_SILENCE" },
+  { name: "MAIN_HEALER" },
+  { name: "BRUXO" },
+  { name: "RAIZ_PT_HEAL" },
+  { name: "RAIZ_BM" },
+  { name: "QUEBRA_REINOS" },
+  { name: "INCUBUS" },
+  { name: "OCULTO" },
+  { name: "SCOUT" },
+  { name: "DPS" }
 ];
 
 /* ================= READY ================= */
@@ -160,35 +182,19 @@ client.once(Events.ClientReady, async () => {
   const commands = [
     new SlashCommandBuilder()
       .setName("dgavafull")
-      .setDescription("Criar DGAVA FULL RAID")
-      .addStringOption(o =>
-        o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("hora").setDescription("HH:MM").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao").setDescription("Descrição").setRequired(true)
-      ),
+      .setDescription("Criar DGAVA FULL")
+      .addStringOption(o => o.setName("data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setRequired(true)),
 
     new SlashCommandBuilder()
       .setName("criar")
-      .setDescription("Criar evento manual com emojis do Discord")
-      .addStringOption(o =>
-        o.setName("titulo").setDescription("Título").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("classes").setDescription("Cole os emojis do Discord").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("data").setDescription("DD/MM/AAAA").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("hora").setDescription("HH:MM").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao").setDescription("Descrição").setRequired(true)
-      )
+      .setDescription("Criar evento manual")
+      .addStringOption(o => o.setName("titulo").setRequired(true))
+      .addStringOption(o => o.setName("classes").setRequired(true))
+      .addStringOption(o => o.setName("data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -202,7 +208,7 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* DGAVA FULL */
+    /* DGAVA */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
 
       const event = {
@@ -227,55 +233,59 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    /* ================= CRIAR (CORRIGIDO) ================= */
+    /* CRIAR */
     if (i.isChatInputCommand() && i.commandName === "criar") {
 
-      try {
-        await i.deferReply();
+      await i.deferReply();
 
-        const titulo = i.options.getString("titulo");
-        const classesRaw = i.options.getString("classes");
-        const data = i.options.getString("data");
-        const hora = i.options.getString("hora");
-        const descricao = i.options.getString("descricao");
+      const event = {
+        title: i.options.getString("titulo"),
+        data: i.options.getString("data"),
+        hora: i.options.getString("hora"),
+        description: i.options.getString("descricao"),
+        members: {}
+      };
 
-        const event = {
-          title: titulo,
-          data,
-          hora,
-          description: descricao,
-          members: {}
-        };
+      const emojis = i.options.getString("classes").match(/<:[^:]+:\d+>/g) || [];
 
-        const emojis = classesRaw.match(/<:[a-zA-Z0-9_]+:\d+>/g) || [];
-
-        for (const emoji of emojis) {
-          const name = emoji.split(":")[1];
-          event.members[name] = [];
-        }
-
-        const msg = await i.editReply({
-          embeds: [buildEmbed(event)],
-          components: buildButtons(event),
-          fetchReply: true
-        });
-
-        groups.set(msg.id, event);
-        saveGroups();
-
-      } catch (err) {
-        console.error("ERRO /criar:", err);
-
-        if (!i.replied) {
-          await i.reply({
-            content: "Erro ao criar evento.",
-            ephemeral: true
-          });
-        }
+      for (const emoji of emojis) {
+        const name = emoji.split(":")[1];
+        event.members[`${emoji} ${name}`] = [];
       }
+
+      const msg = await i.editReply({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event),
+        fetchReply: true
+      });
+
+      groups.set(msg.id, event);
+      saveGroups();
     }
 
-    /* BUTTONS */
+    /* BOTÕES CRIAR */
+    if (i.isButton() && i.customId.startsWith("join_")) {
+
+      const event = groups.get(i.message.id);
+      if (!event) return;
+
+      const role = i.customId.replace("join_", "");
+
+      for (const key in event.members) {
+        event.members[key] = event.members[key].filter(u => u.id !== i.user.id);
+      }
+
+      event.members[role].push({ id: i.user.id });
+
+      saveGroups();
+
+      return i.update({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event)
+      });
+    }
+
+    /* BOTÕES DGAVA */
     if (i.isButton() && i.customId.startsWith("dgava_")) {
 
       const event = groups.get(i.message.id);
@@ -287,7 +297,9 @@ client.on("interactionCreate", async i => {
         event.members[c.name] = event.members[c.name].filter(u => u.id !== i.user.id);
       }
 
-      event.members[role].push({ id: i.user.id, sub: null });
+      event.members[role].push({ id: i.user.id });
+
+      saveGroups();
 
       return i.update({
         embeds: [buildEmbed(event)],
@@ -296,17 +308,17 @@ client.on("interactionCreate", async i => {
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("Erro:", err);
   }
 });
 
 /* ================= EXPRESS ================= */
 
 const app = express();
-app.get("/", (req, res) => res.send("Albion Bot está online!"));
+app.get("/", (req, res) => res.send("Albion Bot online"));
 
 app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor web ativo");
+  console.log("Web server ativo");
 });
 
 client.login(process.env.DISCORD_TOKEN);
