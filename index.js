@@ -65,7 +65,7 @@ function loadGroups() {
   for (const id in data) groups.set(id, data[id]);
 }
 
-/* ================= TEMPO (CORRIGIDO BRASIL) ================= */
+/* ================= TEMPO CORRIGIDO ================= */
 
 function getTimeRemaining(data, hora) {
   try {
@@ -97,7 +97,6 @@ function buildEmbed(group) {
     );
 
   for (const key in group.members) {
-
     let emoji = "";
     const found = DGAVA_CLASSES.find(c => c.name === key);
     if (found) emoji = found.emoji;
@@ -116,7 +115,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES CRIAR ================= */
+/* ================= BOTÕES ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -159,8 +158,6 @@ function buildButtons(group) {
 
   return rows;
 }
-
-/* ================= BOTÕES DGAVA ================= */
 
 function buildDgavaButtons(group) {
   const rows = [];
@@ -229,34 +226,18 @@ client.once(Events.ClientReady, async () => {
     new SlashCommandBuilder()
       .setName("dgavafull")
       .setDescription("Criar DG Avalon Full")
-      .addStringOption(o =>
-        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao").setDescription("Descrição do evento").setRequired(true)
-      ),
+      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true)),
 
     new SlashCommandBuilder()
       .setName("criar")
       .setDescription("Criar evento personalizado")
-      .addStringOption(o =>
-        o.setName("titulo").setDescription("Título do evento").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("classes").setDescription("Cole os emojis").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
-      )
-      .addStringOption(o =>
-        o.setName("descricao").setDescription("Descrição").setRequired(true)
-      )
+      .addStringOption(o => o.setName("titulo").setDescription("Título").setRequired(true))
+      .addStringOption(o => o.setName("classes").setDescription("Emojis").setRequired(true))
+      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true))
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -268,9 +249,8 @@ client.once(Events.ClientReady, async () => {
 client.on("interactionCreate", async i => {
   try {
 
-    /* ================= EDITAR ================= */
+    /* EDITAR */
     if (i.isButton() && i.customId.startsWith("edit_")) {
-
       const messageId = i.customId.replace("edit_", "");
       const event = groups.get(messageId);
       if (!event) return;
@@ -281,34 +261,20 @@ client.on("interactionCreate", async i => {
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("data")
-            .setLabel("Data (DD/MM/YYYY)")
-            .setStyle(TextInputStyle.Short)
-            .setValue(event.data)
+          new TextInputBuilder().setCustomId("data").setLabel("Data").setStyle(TextInputStyle.Short).setValue(event.data)
         ),
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("hora")
-            .setLabel("Hora (HH:MM)")
-            .setStyle(TextInputStyle.Short)
-            .setValue(event.hora)
+          new TextInputBuilder().setCustomId("hora").setLabel("Hora").setStyle(TextInputStyle.Short).setValue(event.hora)
         ),
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("desc")
-            .setLabel("Descrição")
-            .setStyle(TextInputStyle.Paragraph)
-            .setValue(event.description)
+          new TextInputBuilder().setCustomId("desc").setLabel("Descrição").setStyle(TextInputStyle.Paragraph).setValue(event.description)
         )
       );
 
       return i.showModal(modal);
     }
 
-    /* SALVAR EDIÇÃO */
     if (i.isModalSubmit() && i.customId.startsWith("modal_edit_")) {
-
       const messageId = i.customId.replace("modal_edit_", "");
       const event = groups.get(messageId);
       if (!event) return;
@@ -330,14 +296,12 @@ client.on("interactionCreate", async i => {
       return i.reply({ content: "Evento atualizado!", ephemeral: true });
     }
 
-    /* RESTO DO SEU CÓDIGO CONTINUA IGUAL (CRIAR, DGAVA, DPS, BOTÕES...) */
-
   } catch (err) {
     console.error(err);
   }
 });
 
-/* ================= AVISO (CORRIGIDO) ================= */
+/* ================= AVISO CORRIGIDO ================= */
 
 function checkEvents() {
   const now = new Date();
