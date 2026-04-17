@@ -97,6 +97,7 @@ function buildEmbed(group) {
     );
 
   for (const key in group.members) {
+
     let emoji = "";
     const found = DGAVA_CLASSES.find(c => c.name === key);
     if (found) emoji = found.emoji;
@@ -115,7 +116,7 @@ function buildEmbed(group) {
   return embed;
 }
 
-/* ================= BOTÕES ================= */
+/* ================= BOTÕES CRIAR ================= */
 
 function buildButtons(group) {
   const rows = [];
@@ -158,6 +159,8 @@ function buildButtons(group) {
 
   return rows;
 }
+
+/* ================= BOTÕES DGAVA ================= */
 
 function buildDgavaButtons(group) {
   const rows = [];
@@ -226,18 +229,34 @@ client.once(Events.ClientReady, async () => {
     new SlashCommandBuilder()
       .setName("dgavafull")
       .setDescription("Criar DG Avalon Full")
-      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true)),
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição do evento").setRequired(true)
+      ),
 
     new SlashCommandBuilder()
       .setName("criar")
       .setDescription("Criar evento personalizado")
-      .addStringOption(o => o.setName("titulo").setDescription("Título").setRequired(true))
-      .addStringOption(o => o.setName("classes").setDescription("Emojis").setRequired(true))
-      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true))
+      .addStringOption(o =>
+        o.setName("titulo").setDescription("Título do evento").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("classes").setDescription("Cole os emojis").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("data").setDescription("Data (DD/MM/YYYY)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("hora").setDescription("Hora (HH:MM)").setRequired(true)
+      )
+      .addStringOption(o =>
+        o.setName("descricao").setDescription("Descrição").setRequired(true)
+      )
   ].map(c => c.toJSON());
 
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
@@ -301,7 +320,7 @@ client.on("interactionCreate", async i => {
   }
 });
 
-/* ================= AVISO CORRIGIDO ================= */
+/* ================= AVISO ================= */
 
 function checkEvents() {
   const now = new Date();
