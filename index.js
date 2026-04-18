@@ -71,9 +71,16 @@ function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  return new Date(Date.UTC(y, m - 1, d, h, min, 0));
+  // força Brasil sem depender do servidor
+  return new Date(
+    Number(y),
+    Number(m) - 1,
+    Number(d),
+    Number(h),
+    Number(min),
+    0
+  );
 }
-
 function getTimeRemaining(data, hora) {
   try {
     const diff = getEventDate(data, hora).getTime() - Date.now();
