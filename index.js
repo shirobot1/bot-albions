@@ -70,7 +70,11 @@ function loadGroups() {
 function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
-  return new Date(y, m - 1, d, h, min);
+
+  // cria data como string ISO já no fuso Brasil
+  const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${h.padStart(2, "0")}:${min.padStart(2, "0")}:00-03:00`;
+
+  return new Date(iso);
 }
 
 function getTimeRemaining(data, hora) {
