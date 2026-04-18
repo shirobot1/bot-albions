@@ -232,24 +232,56 @@ client.once(Events.ClientReady, async () => {
   loadGroups();
   setInterval(checkEvents, 60000);
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("dgavafull")
-      .setDescription("Criar DG Avalon Full")
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true)),
+const commands = [
+  new SlashCommandBuilder()
+    .setName("dgavafull")
+    .setDescription("Criar DG Avalon Full")
+    .addStringOption(o =>
+      o.setName("data")
+        .setDescription("Data do evento (DD/MM/AAAA)")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("hora")
+        .setDescription("Hora do evento (HH:MM)")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("descricao")
+        .setDescription("Descrição do evento")
+        .setRequired(true)
+    ),
 
-    new SlashCommandBuilder()
-      .setName("criar")
-      .setDescription("Criar evento")
-      .addStringOption(o => o.setName("titulo").setRequired(true))
-      .addStringOption(o => o.setName("classes").setRequired(true))
-      .addStringOption(o => o.setName("data").setRequired(true))
-      .addStringOption(o => o.setName("hora").setRequired(true))
-      .addStringOption(o => o.setName("descricao").setRequired(true))
-  ].map(c => c.toJSON());
-
+  new SlashCommandBuilder()
+    .setName("criar")
+    .setDescription("Criar evento personalizado")
+    .addStringOption(o =>
+      o.setName("titulo")
+        .setDescription("Título do evento")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("classes")
+        .setDescription("Emojis das classes (ex: <:tank:123> <:heal:456>)")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("data")
+        .setDescription("Data do evento (DD/MM/AAAA)")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("hora")
+        .setDescription("Hora do evento (HH:MM)")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("descricao")
+        .setDescription("Descrição do evento")
+        .setRequired(true)
+    )
+].map(c => c.toJSON());
+  
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 });
