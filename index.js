@@ -86,8 +86,6 @@ function getTimeRemaining(data, hora) {
   }
 }
 
-/* ================= FORMAT BR ================= */
-
 function formatDateBR(data, hora) {
   try {
     return getEventDate(data, hora).toLocaleString("pt-BR", {
@@ -232,56 +230,24 @@ client.once(Events.ClientReady, async () => {
   loadGroups();
   setInterval(checkEvents, 60000);
 
-const commands = [
-  new SlashCommandBuilder()
-    .setName("dgavafull")
-    .setDescription("Criar DG Avalon Full")
-    .addStringOption(o =>
-      o.setName("data")
-        .setDescription("Data do evento (DD/MM/AAAA)")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("hora")
-        .setDescription("Hora do evento (HH:MM)")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descrição do evento")
-        .setRequired(true)
-    ),
+  const commands = [
+    new SlashCommandBuilder()
+      .setName("dgavafull")
+      .setDescription("Criar DG Avalon Full")
+      .addStringOption(o => o.setName("data").setDescription("Data do evento").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("Hora do evento").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true)),
 
-  new SlashCommandBuilder()
-    .setName("criar")
-    .setDescription("Criar evento personalizado")
-    .addStringOption(o =>
-      o.setName("titulo")
-        .setDescription("Título do evento")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("classes")
-        .setDescription("Emojis das classes (ex: <:tank:123> <:heal:456>)")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("data")
-        .setDescription("Data do evento (DD/MM/AAAA)")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("hora")
-        .setDescription("Hora do evento (HH:MM)")
-        .setRequired(true)
-    )
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descrição do evento")
-        .setRequired(true)
-    )
-].map(c => c.toJSON());
-  
+    new SlashCommandBuilder()
+      .setName("criar")
+      .setDescription("Criar evento personalizado")
+      .addStringOption(o => o.setName("titulo").setDescription("Título").setRequired(true))
+      .addStringOption(o => o.setName("classes").setDescription("Emojis").setRequired(true))
+      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
+      .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true))
+  ].map(c => c.toJSON());
+
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 });
@@ -291,7 +257,11 @@ const commands = [
 client.on("interactionCreate", async i => {
   try {
 
-    if (!i.deferred && !i.replied) await i.deferUpdate().catch(()=>{});
+    if (i.isButton() || i.isStringSelectMenu()) {
+      if (!i.deferred && !i.replied) {
+        await i.deferUpdate().catch(() => {});
+      }
+    }
 
     if (i.isButton() && i.customId.startsWith("edit_")) {
       const id = i.customId.replace("edit_", "");
@@ -333,7 +303,7 @@ client.on("interactionCreate", async i => {
 
       await msg.edit({ embeds: [buildEmbed(e)], components: msg.components });
 
-      return i.reply({ content: "Atualizado!", ephemeral: true });
+      return i.reply({ content: "Evento atualizado!", ephemeral: true });
     }
 
     if (i.isButton() && i.customId === "leave_event") {
@@ -348,7 +318,6 @@ client.on("interactionCreate", async i => {
     }
 
     if (i.isButton() && (i.customId.startsWith("join_") || i.customId.startsWith("dgava_"))) {
-
       const e = groups.get(i.message.id);
       if (!e) return;
 
@@ -395,6 +364,75 @@ client.on("interactionCreate", async i => {
       await msg.edit({ embeds: [buildEmbed(e)], components: msg.components });
 
       return i.update({ content: "Selecionado!", components: [] });
+    }
+
+    /* CRIAR EVENTO */
+    if (i.isChatInputCommand() && i.commandName === "criar") {
+      await i.deferReply();
+
+      const event = {
+        title: i.options.getString("titulo"),
+        data: i.options.getString("data"),
+        hora: i.options.getString("hora"),
+        description: i.options.getString("descricao"),
+        members: {},
+        channelId: i.channelId,
+        notified: false
+      };
+
+      const emojis = i.options.getString("classes").match(/<:[^:]+:\d+>/g) || [];
+
+      emojis.forEach(e => {
+        const name = e.split(":")[1];
+        event.members[`${e} ${name}`] = [];
+      });
+
+      const msg = await i.editReply({
+        embeds: [buildEmbed(event)],
+        components: buildButtons({ ...event, messageId: "temp" }),
+        fetchReply: true
+      });
+
+      event.messageId = msg.id;
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: buildButtons(event)
+      });
+
+      groups.set(msg.id, event);
+      saveGroups();
+    }
+
+    /* DGAVA */
+    if (i.isChatInputCommand() && i.commandName === "dgavafull") {
+      const event = {
+        title: "DGAVA FULL RAID",
+        data: i.options.getString("data"),
+        hora: i.options.getString("hora"),
+        description: i.options.getString("descricao"),
+        members: {},
+        channelId: i.channelId,
+        notified: false
+      };
+
+      DGAVA_CLASSES.forEach(c => event.members[c.name] = []);
+
+      const msg = await i.reply({
+        embeds: [buildEmbed(event)],
+        components: buildDgavaButtons({ ...event, messageId: "temp" }),
+        fetchReply: true
+      });
+
+      event.messageId = msg.id;
+
+      await msg.edit({
+        embeds: [buildEmbed(event)],
+        components: buildDgavaButtons(event)
+      });
+
+      groups.set(msg.id, event);
+      saveGroups();
     }
 
   } catch (err) {
