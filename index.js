@@ -71,15 +71,11 @@ function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  // força Brasil sem depender do servidor
-  return new Date(
-    Number(y),
-    Number(m) - 1,
-    Number(d),
-    Number(h),
-    Number(min),
-    0
-  );
+  // CRIA DATA EM UTC MAS AJUSTA COMO BRASIL (UTC-3 fixo)
+  const date = new Date(Date.UTC(y, m - 1, d, h, min, 0));
+
+  // remove o offset do Brasil (-3h)
+  return new Date(date.getTime() + (3 * 60 * 60 * 1000));
 }
 function getTimeRemaining(data, hora) {
   try {
