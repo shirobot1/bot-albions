@@ -328,12 +328,35 @@ client.on("interactionCreate", async i => {
         notified: false
       };
 
-      const emojis = i.options.getString("classes").match(/<:[^:]+:\d+>/g) || [];
+     const inputClasses = i.options.getString("classes") || "";
 
-      emojis.forEach(e => {
-        const name = e.split(":")[1];
-        event.members[`${e} ${name}`] = [];
-      });
+// separa por vírgula ou ponto e vírgula
+const parts = inputClasses.split(/[,;]+/).map(p => p.trim()).filter(Boolean);
+
+parts.forEach(part => {
+
+  // detecta emoji
+  const emojiMatch = part.match(/<:[^:]+:\d+>/);
+
+  if (emojiMatch) {
+    const emoji = emojiMatch[0];
+
+    // pega o nome depois do emoji
+    let name = part.replace(emoji, "").trim();
+
+    // fallback caso não tenha nome depois
+    if (!name) {
+      name = emoji.split(":")[1];
+    }
+
+    event.members[`${emoji} ${name}`] = [];
+  } else {
+    // texto puro (Tank, Healer, DPS etc)
+    const name = part;
+    event.members[name] = [];
+  }
+
+});
 
       const msg = await i.editReply({
         embeds: [buildEmbed(event)],
