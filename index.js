@@ -71,19 +71,12 @@ function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  return new Date(Date.UTC(
-    y,
-    m - 1,
-    d,
-    h,
-    min,
-    0
-  ));
+  return new Date(Date.UTC(y, m - 1, d, h, min, 0));
 }
 
 function getTimeRemaining(data, hora) {
   try {
-    const diff = getEventDate(data, hora) - new Date();
+    const diff = getEventDate(data, hora).getTime() - Date.now();
 
     if (diff <= 0) return "Evento iniciado";
 
@@ -95,20 +88,7 @@ function getTimeRemaining(data, hora) {
 }
 
 function formatDateBR(data, hora) {
-  try {
-    const date = getEventDate(data, hora);
-
-    return date.toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  } catch {
-    return `${data} ${hora}`;
-  }
+  return `${data} às ${hora}`;
 }
 /* ================= EMBED ================= */
 
