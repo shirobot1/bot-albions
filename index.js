@@ -71,7 +71,15 @@ function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  return new Date(Date.UTC(y, m - 1, d, h, min));
+  // força horário BR corretamente sem offset duplicado
+  return new Date(
+    y,
+    m - 1,
+    d,
+    h,
+    min,
+    0
+  );
 }
 
 function getTimeRemaining(data, hora) {
@@ -90,7 +98,6 @@ function getTimeRemaining(data, hora) {
 function formatDateBR(data, hora) {
   try {
     return getEventDate(data, hora).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
