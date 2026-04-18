@@ -65,16 +65,16 @@ function loadGroups() {
   for (const id in data) groups.set(id, data[id]);
 }
 
-/* ================= TEMPO ================= */
+/* ================= TEMPO (CORRIGIDO 100%) ================= */
 
 function getEventDate(data, hora) {
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  // cria data como string ISO já no fuso Brasil
-  const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${h.padStart(2, "0")}:${min.padStart(2, "0")}:00-03:00`;
-
-  return new Date(iso);
+  // FIX FUSO BRASIL (-3)
+  return new Date(
+    `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${h.padStart(2, "0")}:${min.padStart(2, "0")}:00-03:00`
+  );
 }
 
 function getTimeRemaining(data, hora) {
@@ -93,6 +93,7 @@ function getTimeRemaining(data, hora) {
 function formatDateBR(data, hora) {
   try {
     return getEventDate(data, hora).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -177,6 +178,8 @@ function buildButtons(group) {
   return rows;
 }
 
+/* ================= DGAVA BUTTONS ================= */
+
 function buildDgavaButtons(group) {
   const rows = [];
   let row = new ActionRowBuilder();
@@ -238,8 +241,8 @@ client.once(Events.ClientReady, async () => {
     new SlashCommandBuilder()
       .setName("dgavafull")
       .setDescription("Criar DG Avalon Full")
-      .addStringOption(o => o.setName("data").setDescription("Data do evento").setRequired(true))
-      .addStringOption(o => o.setName("hora").setDescription("Hora do evento").setRequired(true))
+      .addStringOption(o => o.setName("data").setDescription("Data").setRequired(true))
+      .addStringOption(o => o.setName("hora").setDescription("Hora").setRequired(true))
       .addStringOption(o => o.setName("descricao").setDescription("Descrição").setRequired(true)),
 
     new SlashCommandBuilder()
@@ -256,16 +259,10 @@ client.once(Events.ClientReady, async () => {
   await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 });
 
-/* ================= INTERAÇÕES ================= */
+/* ================= INTERAÇÕES (CORRIGIDO) ================= */
 
 client.on("interactionCreate", async i => {
   try {
-
-    if (i.isButton() || i.isStringSelectMenu()) {
-      if (!i.deferred && !i.replied) {
-        await i.deferUpdate().catch(() => {});
-      }
-    }
 
     if (i.isButton() && i.customId.startsWith("edit_")) {
       const id = i.customId.replace("edit_", "");
@@ -312,13 +309,18 @@ client.on("interactionCreate", async i => {
 
     if (i.isButton() && i.customId === "leave_event") {
       const e = groups.get(i.message.id);
+      if (!e) return;
 
       for (const k in e.members)
         e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
 
       saveGroups();
 
-      return i.editReply({ embeds: [buildEmbed(e)], components: i.message.components });
+      const msg = await i.message.fetch();
+      return msg.edit({
+        embeds: [buildEmbed(e)],
+        components: i.message.components
+      });
     }
 
     if (i.isButton() && (i.customId.startsWith("join_") || i.customId.startsWith("dgava_"))) {
@@ -342,7 +344,11 @@ client.on("interactionCreate", async i => {
 
       saveGroups();
 
-      return i.editReply({ embeds: [buildEmbed(e)], components: i.message.components });
+      const msg = await i.message.fetch();
+      return msg.edit({
+        embeds: [buildEmbed(e)],
+        components: i.message.components
+      });
     }
 
     if (i.isStringSelectMenu() && i.customId.startsWith("dps_select_")) {
@@ -370,7 +376,6 @@ client.on("interactionCreate", async i => {
       return i.update({ content: "Selecionado!", components: [] });
     }
 
-    /* CRIAR EVENTO */
     if (i.isChatInputCommand() && i.commandName === "criar") {
       await i.deferReply();
 
@@ -408,7 +413,6 @@ client.on("interactionCreate", async i => {
       saveGroups();
     }
 
-    /* DGAVA */
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
       const event = {
         title: "DGAVA FULL RAID",
@@ -444,7 +448,7 @@ client.on("interactionCreate", async i => {
   }
 });
 
-/* ================= AVISO ================= */
+/* ================= CHECK ================= */
 
 function checkEvents() {
   const now = new Date();
