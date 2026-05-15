@@ -61,9 +61,15 @@ function saveGroups() {
 
 function loadGroups() {
   if (!fs.existsSync("./groups.json")) return;
+
   const data = JSON.parse(fs.readFileSync("./groups.json"));
-  for (const id in data) groups.set(id, data[id]);
+
+  for (const id in data) {
+    groups.set(id, data[id]);
+  }
 }
+
+loadGroups();
 
 /* ================= TEMPO ================= */
 
@@ -72,14 +78,18 @@ function getEventDate(data, hora) {
   const [h, min] = hora.split(":");
 
   const date = new Date(Date.UTC(y, m - 1, d, h, min, 0));
+
   return new Date(date.getTime() + (3 * 60 * 60 * 1000));
 }
 
 function getTimeRemaining(data, hora) {
   try {
     const diff = getEventDate(data, hora).getTime() - Date.now();
+
     if (diff <= 0) return "Evento iniciado";
+
     const minTotal = Math.floor(diff / 60000);
+
     return `${Math.floor(minTotal / 60)}h ${minTotal % 60}m`;
   } catch {
     return "Data inválida";
@@ -102,13 +112,19 @@ function buildEmbed(group) {
 
   for (const key in group.members) {
     let emoji = "";
+
     const found = DGAVA_CLASSES.find(c => c.name === key);
-    if (found) emoji = found.emoji;
+
+    if (found) {
+      emoji = found.emoji;
+    }
 
     embed.addFields({
       name: `${emoji} ${key}`,
       value: group.members[key].length
-        ? group.members[key].map(u => `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`).join("\n")
+        ? group.members[key]
+            .map(u => `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`)
+            .join("\n")
         : "—",
       inline: true
     });
@@ -121,6 +137,7 @@ function buildEmbed(group) {
 
 function buildButtons(group) {
   const rows = [];
+
   let row = new ActionRowBuilder();
 
   for (const key in group.members) {
@@ -131,7 +148,9 @@ function buildButtons(group) {
       .setLabel(key.replace(/<:[^:]+:\d+>\s*/, ""))
       .setStyle(ButtonStyle.Primary);
 
-    if (match) btn.setEmoji(match[1]);
+    if (match) {
+      btn.setEmoji(match[1]);
+    }
 
     if (row.components.length === 5) {
       rows.push(row);
@@ -145,8 +164,17 @@ function buildButtons(group) {
 
   rows.push(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("leave_event").setLabel("Sair").setStyle(ButtonStyle.Danger).setEmoji("🚪"),
-      new ButtonBuilder().setCustomId("edit_" + group.messageId).setLabel("Editar").setStyle(ButtonStyle.Secondary).setEmoji("✏️")
+      new ButtonBuilder()
+        .setCustomId("leave_event")
+        .setLabel("Sair")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("🚪"),
+
+      new ButtonBuilder()
+        .setCustomId("edit_" + group.messageId)
+        .setLabel("Editar")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("✏️")
     )
   );
 
@@ -157,6 +185,7 @@ function buildButtons(group) {
 
 function buildDgavaButtons(group) {
   const rows = [];
+
   let row = new ActionRowBuilder();
 
   for (const c of DGAVA_CLASSES) {
@@ -180,8 +209,15 @@ function buildDgavaButtons(group) {
 
   rows.push(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("leave_event").setEmoji("🚪").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("edit_" + group.messageId).setEmoji("✏️").setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder()
+        .setCustomId("leave_event")
+        .setEmoji("🚪")
+        .setStyle(ButtonStyle.Danger),
+
+      new ButtonBuilder()
+        .setCustomId("edit_" + group.messageId)
+        .setEmoji("✏️")
+        .setStyle(ButtonStyle.Secondary)
     )
   );
 
@@ -205,14 +241,95 @@ function dpsMenu(messageId) {
   );
 }
 
+/* ================= COMANDOS ================= */
+
+const commands = [
+  new SlashCommandBuilder()
+    .setName("criar")
+    .setDescription("Criar evento")
+    .addStringOption(o =>
+      o
+        .setName("titulo")
+        .setDescription("Título")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o
+        .setName("data")
+        .setDescription("Data")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o
+        .setName("hora")
+        .setDescription("Hora")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o
+        .setName("descricao")
+        .setDescription("Descrição")
+        .setRequired(false)
+    )
+    .addStringOption(o =>
+      o
+        .setName("classes")
+        .setDescription("Classes")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("dgavafull")
+    .setDescription("Criar DGAVA FULL")
+    .addStringOption(o =>
+      o
+        .setName("data")
+        .setDescription("Data")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o
+        .setName("hora")
+        .setDescription("Hora")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o
+        .setName("descricao")
+        .setDescription("Descrição")
+        .setRequired(false)
+    )
+].map(c => c.toJSON());
+
+client.once(Events.ClientReady, async () => {
+  console.log(`Logado como ${client.user.tag}`);
+
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
+
+    console.log("Comandos registrados");
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
   try {
 
+    /* ================= EDITAR ================= */
+
     if (i.isButton() && i.customId.startsWith("edit_")) {
       const id = i.customId.replace("edit_", "");
+
       const e = groups.get(id);
+
       if (!e) return;
 
       const modal = new ModalBuilder()
@@ -221,22 +338,40 @@ client.on("interactionCreate", async i => {
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("data").setLabel("Data").setStyle(TextInputStyle.Short).setValue(e.data)
+          new TextInputBuilder()
+            .setCustomId("data")
+            .setLabel("Data")
+            .setStyle(TextInputStyle.Short)
+            .setValue(e.data)
         ),
+
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("hora").setLabel("Hora").setStyle(TextInputStyle.Short).setValue(e.hora)
+          new TextInputBuilder()
+            .setCustomId("hora")
+            .setLabel("Hora")
+            .setStyle(TextInputStyle.Short)
+            .setValue(e.hora)
         ),
+
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("desc").setLabel("Descrição").setStyle(TextInputStyle.Paragraph).setValue(e.description)
+          new TextInputBuilder()
+            .setCustomId("desc")
+            .setLabel("Descrição")
+            .setStyle(TextInputStyle.Paragraph)
+            .setValue(e.description)
         )
       );
 
       return i.showModal(modal);
     }
 
+    /* ================= MODAL ================= */
+
     if (i.isModalSubmit() && i.customId.startsWith("modal_edit_")) {
       const id = i.customId.replace("modal_edit_", "");
+
       const e = groups.get(id);
+
       if (!e) return;
 
       e.data = i.fields.getTextInputValue("data");
@@ -246,31 +381,56 @@ client.on("interactionCreate", async i => {
       saveGroups();
 
       const ch = await client.channels.fetch(e.channelId);
+
       const msg = await ch.messages.fetch(id);
 
-      return msg.edit({ embeds: [buildEmbed(e)], components: buildButtons(e) });
+      return msg.edit({
+        embeds: [buildEmbed(e)],
+        components:
+          e.title === "DGAVA FULL RAID"
+            ? buildDgavaButtons(e)
+            : buildButtons(e)
+      });
     }
+
+    /* ================= SAIR ================= */
 
     if (i.isButton() && i.customId === "leave_event") {
       const e = groups.get(i.message.id);
+
       if (!e) return;
 
-      for (const k in e.members)
+      for (const k in e.members) {
         e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+      }
 
       saveGroups();
 
       return i.update({
         embeds: [buildEmbed(e)],
-        components: buildButtons(e)
+        components:
+          e.title === "DGAVA FULL RAID"
+            ? buildDgavaButtons(e)
+            : buildButtons(e)
       });
     }
 
-    if (i.isButton() && (i.customId.startsWith("join_") || i.customId.startsWith("dgava_"))) {
+    /* ================= ENTRAR ================= */
+
+    if (
+      i.isButton() &&
+      (
+        i.customId.startsWith("join_") ||
+        i.customId.startsWith("dgava_")
+      )
+    ) {
       const e = groups.get(i.message.id);
+
       if (!e) return;
 
-      const role = i.customId.replace("join_", "").replace("dgava_", "");
+      const role = i.customId
+        .replace("join_", "")
+        .replace("dgava_", "");
 
       if (role === "DPS") {
         return i.reply({
@@ -280,87 +440,119 @@ client.on("interactionCreate", async i => {
         });
       }
 
-      for (const k in e.members)
+      for (const k in e.members) {
         e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+      }
 
-      e.members[role].push({ id: i.user.id });
+      e.members[role].push({
+        id: i.user.id
+      });
 
       saveGroups();
 
       return i.update({
         embeds: [buildEmbed(e)],
-        components: buildButtons(e)
+        components:
+          e.title === "DGAVA FULL RAID"
+            ? buildDgavaButtons(e)
+            : buildButtons(e)
       });
     }
 
-    if (i.isStringSelectMenu() && i.customId.startsWith("dps_select_")) {
+    /* ================= DPS ================= */
+
+    if (
+      i.isStringSelectMenu() &&
+      i.customId.startsWith("dps_select_")
+    ) {
       const id = i.customId.replace("dps_select_", "");
+
       const e = groups.get(id);
+
       if (!e) return;
 
       const role = i.values[0];
 
-      for (const k in e.members)
+      for (const k in e.members) {
         e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+      }
 
-      e.members["DPS"].push({ id: i.user.id, emoji: DPS_SUB[role] });
+      e.members["DPS"].push({
+        id: i.user.id,
+        emoji: DPS_SUB[role]
+      });
 
       saveGroups();
 
       const ch = await client.channels.fetch(e.channelId);
+
       const msg = await ch.messages.fetch(id);
 
-      await msg.edit({ embeds: [buildEmbed(e)], components: msg.components });
+      await msg.edit({
+        embeds: [buildEmbed(e)],
+        components:
+          e.title === "DGAVA FULL RAID"
+            ? buildDgavaButtons(e)
+            : buildButtons(e)
+      });
 
-      return i.update({ content: "Selecionado!", components: [] });
+      return i.update({
+        content: "Selecionado!",
+        components: []
+      });
     }
 
+    /* ================= /CRIAR ================= */
+
     if (i.isChatInputCommand() && i.commandName === "criar") {
+
       await i.deferReply();
 
       const event = {
         title: i.options.getString("titulo"),
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
-        description: i.options.getString("descricao"),
+        description: i.options.getString("descricao") || "Sem descrição",
         members: {},
         channelId: i.channelId,
         notified: false
       };
 
-     const inputClasses = i.options.getString("classes") || "";
+      const inputClasses = i.options.getString("classes") || "";
 
-// separa por vírgula ou ponto e vírgula
-const parts = inputClasses.split(/[,;]+/).map(p => p.trim()).filter(Boolean);
+      const parts = inputClasses
+        .split(/[,;]+/)
+        .map(p => p.trim())
+        .filter(Boolean);
 
-parts.forEach(part => {
+      parts.forEach(part => {
 
-  // detecta emoji
-  const emojiMatch = part.match(/<:[^:]+:\d+>/);
+        const emojiMatch = part.match(/<:[^:]+:\d+>/);
 
-  if (emojiMatch) {
-    const emoji = emojiMatch[0];
+        if (emojiMatch) {
+          const emoji = emojiMatch[0];
 
-    // pega o nome depois do emoji
-    let name = part.replace(emoji, "").trim();
+          let name = part.replace(emoji, "").trim();
 
-    // fallback caso não tenha nome depois
-    if (!name) {
-      name = emoji.split(":")[1];
-    }
+          if (!name) {
+            name = emoji.split(":")[1];
+          }
 
-    event.members[`${emoji} ${name}`] = [];
-  } else {
-    // texto puro (Tank, Healer, DPS etc)
-    const name = part;
-    event.members[name] = [];
-  }
+          event.members[`${emoji} ${name}`] = [];
+        } else {
+          const name = part;
 
-});
+          event.members[name] = [];
+        }
+
+      });
 
       const msg = await i.editReply({
         embeds: [buildEmbed(event)],
-        components: buildButtons({ ...event, messageId: "temp" }),
+        components: buildButtons({
+          ...event,
+          messageId: "temp"
+        }),
         fetchReply: true
       });
 
@@ -372,25 +564,36 @@ parts.forEach(part => {
       });
 
       groups.set(msg.id, event);
+
       saveGroups();
     }
 
+    /* ================= /DGAVAFULL ================= */
+
     if (i.isChatInputCommand() && i.commandName === "dgavafull") {
+
+      await i.deferReply();
+
       const event = {
         title: "DGAVA FULL RAID",
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
-        description: i.options.getString("descricao"),
+        description: i.options.getString("descricao") || "Sem descrição",
         members: {},
         channelId: i.channelId,
         notified: false
       };
 
-      DGAVA_CLASSES.forEach(c => event.members[c.name] = []);
+      DGAVA_CLASSES.forEach(c => {
+        event.members[c.name] = [];
+      });
 
-      const msg = await i.reply({
+      const msg = await i.editReply({
         embeds: [buildEmbed(event)],
-        components: buildDgavaButtons({ ...event, messageId: "temp" }),
+        components: buildDgavaButtons({
+          ...event,
+          messageId: "temp"
+        }),
         fetchReply: true
       });
 
@@ -402,11 +605,28 @@ parts.forEach(part => {
       });
 
       groups.set(msg.id, event);
+
       saveGroups();
     }
 
   } catch (err) {
     console.error(err);
+
+    try {
+
+      if (i.deferred || i.replied) {
+        await i.followUp({
+          content: "Ocorreu um erro.",
+          ephemeral: true
+        });
+      } else {
+        await i.reply({
+          content: "Ocorreu um erro.",
+          ephemeral: true
+        });
+      }
+
+    } catch {}
   }
 });
 
@@ -416,25 +636,42 @@ function checkEvents() {
   const now = new Date();
 
   for (const e of groups.values()) {
+
     if (e.notified) continue;
 
-    const diff = (getEventDate(e.data, e.hora) - now) / 60000;
+    const diff = (
+      getEventDate(e.data, e.hora) - now
+    ) / 60000;
 
     if (diff <= 10 && diff > 0) {
+
       const ch = client.channels.cache.get(e.channelId);
+
       if (!ch) continue;
 
-      ch.send(`@everyone ⏰ Evento **${e.title}** começa em 10 minutos!`);
+      ch.send(
+        `@everyone ⏰ Evento **${e.title}** começa em 10 minutos!`
+      );
+
       e.notified = true;
+
       saveGroups();
     }
   }
 }
 
+setInterval(checkEvents, 60000);
+
 /* ================= WEB ================= */
 
 const app = express();
-app.get("/", (req, res) => res.send("Bot online"));
+
+app.get("/", (req, res) => {
+  res.send("Bot online");
+});
+
 app.listen(process.env.PORT || 3000);
+
+/* ================= LOGIN ================= */
 
 client.login(process.env.DISCORD_TOKEN);
