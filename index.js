@@ -1,6 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const express = require("express");
+
 const {
   Client,
   GatewayIntentBits,
@@ -56,16 +57,33 @@ const DGAVA_CLASSES = [
 /* ================= SAVE ================= */
 
 function saveGroups() {
-  fs.writeFileSync("./groups.json", JSON.stringify(Object.fromEntries(groups), null, 2));
+
+  fs.writeFileSync(
+    "./groups.json",
+    JSON.stringify(Object.fromEntries(groups), null, 2)
+  );
+
 }
 
 function loadGroups() {
+
   if (!fs.existsSync("./groups.json")) return;
 
-  const data = JSON.parse(fs.readFileSync("./groups.json"));
+  try {
 
-  for (const id in data) {
-    groups.set(id, data[id]);
+    const data = JSON.parse(
+      fs.readFileSync("./groups.json")
+    );
+
+    for (const id in data) {
+      groups.set(id, data[id]);
+    }
+
+  } catch (err) {
+
+    console.error("Erro ao carregar groups.json");
+    console.error(err);
+
   }
 }
 
@@ -74,25 +92,39 @@ loadGroups();
 /* ================= TEMPO ================= */
 
 function getEventDate(data, hora) {
+
   const [d, m, y] = data.split("/");
   const [h, min] = hora.split(":");
 
-  const date = new Date(Date.UTC(y, m - 1, d, h, min, 0));
+  const date = new Date(
+    Date.UTC(y, m - 1, d, h, min, 0)
+  );
 
-  return new Date(date.getTime() + (3 * 60 * 60 * 1000));
+  return new Date(
+    date.getTime() + (3 * 60 * 60 * 1000)
+  );
 }
 
 function getTimeRemaining(data, hora) {
-  try {
-    const diff = getEventDate(data, hora).getTime() - Date.now();
 
-    if (diff <= 0) return "Evento iniciado";
+  try {
+
+    const diff =
+      getEventDate(data, hora).getTime()
+      - Date.now();
+
+    if (diff <= 0) {
+      return "Evento iniciado";
+    }
 
     const minTotal = Math.floor(diff / 60000);
 
     return `${Math.floor(minTotal / 60)}h ${minTotal % 60}m`;
+
   } catch {
+
     return "Data inválida";
+
   }
 }
 
@@ -103,6 +135,7 @@ function formatDateBR(data, hora) {
 /* ================= EMBED ================= */
 
 function buildEmbed(group) {
+
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${group.title}`)
     .setColor(0x5865F2)
@@ -114,7 +147,9 @@ function buildEmbed(group) {
 
     let emoji = "";
 
-    const found = DGAVA_CLASSES.find(c => c.name === key);
+    const found = DGAVA_CLASSES.find(
+      c => c.name === key
+    );
 
     if (found) {
       emoji = found.emoji;
@@ -124,11 +159,15 @@ function buildEmbed(group) {
       name: `${emoji} ${key}`,
       value: group.members[key].length
         ? group.members[key]
-            .map(u => `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`)
+            .map(
+              u =>
+                `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`
+            )
             .join("\n")
         : "—",
       inline: true
     });
+
   }
 
   return embed;
@@ -144,11 +183,14 @@ function buildButtons(group) {
 
   for (const key in group.members) {
 
-    const match = key.match(/<:[^:]+:(\d+)>/);
+    const match =
+      key.match(/<:[^:]+:(\d+)>/);
 
     const btn = new ButtonBuilder()
       .setCustomId("join_" + key)
-      .setLabel(key.replace(/<:[^:]+:\d+>\s*/, ""))
+      .setLabel(
+        key.replace(/<:[^:]+:\d+>\s*/, "")
+      )
       .setStyle(ButtonStyle.Primary);
 
     if (match) {
@@ -156,8 +198,11 @@ function buildButtons(group) {
     }
 
     if (row.components.length === 5) {
+
       rows.push(row);
+
       row = new ActionRowBuilder();
+
     }
 
     row.addComponents(btn);
@@ -166,21 +211,23 @@ function buildButtons(group) {
   rows.push(row);
 
   rows.push(
+
     new ActionRowBuilder().addComponents(
 
       new ButtonBuilder()
         .setCustomId("leave_event")
         .setLabel("Sair")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji("🚪"),
+        .setEmoji("🚪")
+        .setStyle(ButtonStyle.Danger),
 
       new ButtonBuilder()
         .setCustomId("edit_" + group.messageId)
         .setLabel("Editar")
-        .setStyle(ButtonStyle.Secondary)
         .setEmoji("✏️")
+        .setStyle(ButtonStyle.Secondary)
 
     )
+
   );
 
   return rows;
@@ -205,8 +252,11 @@ function buildDgavaButtons(group) {
       .setStyle(ButtonStyle.Secondary);
 
     if (row.components.length === 5) {
+
       rows.push(row);
+
       row = new ActionRowBuilder();
+
     }
 
     row.addComponents(btn);
@@ -215,6 +265,7 @@ function buildDgavaButtons(group) {
   rows.push(row);
 
   rows.push(
+
     new ActionRowBuilder().addComponents(
 
       new ButtonBuilder()
@@ -228,6 +279,7 @@ function buildDgavaButtons(group) {
         .setStyle(ButtonStyle.Secondary)
 
     )
+
   );
 
   return rows;
@@ -238,16 +290,24 @@ function buildDgavaButtons(group) {
 function dpsMenu(messageId) {
 
   return new ActionRowBuilder().addComponents(
+
     new StringSelectMenuBuilder()
       .setCustomId("dps_select_" + messageId)
       .setPlaceholder("Escolha sua subclasse DPS")
       .addOptions(
-        Object.entries(DPS_SUB).map(([k, v]) => ({
-          label: k,
-          value: k,
-          emoji: v.match(/\d+/)[0]
-        }))
+
+        Object.entries(DPS_SUB).map(
+          ([k, v]) => ({
+
+            label: k,
+            value: k,
+            emoji: v.match(/\d+/)[0]
+
+          })
+        )
+
       )
+
   );
 }
 
@@ -321,17 +381,22 @@ const commands = [
 
 ].map(c => c.toJSON());
 
+/* ================= READY ================= */
+
 client.once(Events.ClientReady, async () => {
 
   console.log(`Logado como ${client.user.tag}`);
 
-  const rest = new REST({ version: "10" })
-    .setToken(process.env.DISCORD_TOKEN);
+  const rest = new REST({
+    version: "10"
+  }).setToken(process.env.DISCORD_TOKEN);
 
   try {
 
     await rest.put(
-      Routes.applicationCommands(client.user.id),
+      Routes.applicationCommands(
+        client.user.id
+      ),
       { body: commands }
     );
 
@@ -346,375 +411,633 @@ client.once(Events.ClientReady, async () => {
 
 /* ================= INTERAÇÕES ================= */
 
-client.on("interactionCreate", async i => {
+client.on(
+  "interactionCreate",
+  async i => {
 
-  try {
+    try {
 
-    /* ================= EDITAR ================= */
+      /* ================= EDITAR ================= */
 
-    if (i.isButton() && i.customId.startsWith("edit_")) {
+      if (
+        i.isButton() &&
+        i.customId.startsWith("edit_")
+      ) {
 
-      const id = i.customId.replace("edit_", "");
+        const id =
+          i.customId.replace("edit_", "");
 
-      const e = groups.get(id);
+        const e = groups.get(id);
 
-      if (!e) return;
+        if (!e) return;
 
-      const modal = new ModalBuilder()
-        .setCustomId("modal_edit_" + id)
-        .setTitle("Editar Evento");
+        const modal = new ModalBuilder()
+          .setCustomId(
+            "modal_edit_" + id
+          )
+          .setTitle("Editar Evento");
 
-      modal.addComponents(
+        modal.addComponents(
 
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("data")
-            .setLabel("Data")
-            .setStyle(TextInputStyle.Short)
-            .setValue(e.data)
-        ),
+          new ActionRowBuilder().addComponents(
 
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("hora")
-            .setLabel("Hora")
-            .setStyle(TextInputStyle.Short)
-            .setValue(e.hora)
-        ),
+            new TextInputBuilder()
+              .setCustomId("data")
+              .setLabel("Data")
+              .setStyle(
+                TextInputStyle.Short
+              )
+              .setValue(e.data)
 
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId("desc")
-            .setLabel("Descrição")
-            .setStyle(TextInputStyle.Paragraph)
-            .setValue(e.description)
-        )
+          ),
 
-      );
+          new ActionRowBuilder().addComponents(
 
-      return i.showModal(modal);
-    }
+            new TextInputBuilder()
+              .setCustomId("hora")
+              .setLabel("Hora")
+              .setStyle(
+                TextInputStyle.Short
+              )
+              .setValue(e.hora)
 
-    /* ================= MODAL ================= */
+          ),
 
-    if (i.isModalSubmit() && i.customId.startsWith("modal_edit_")) {
+          new ActionRowBuilder().addComponents(
 
-      const id = i.customId.replace("modal_edit_", "");
+            new TextInputBuilder()
+              .setCustomId("desc")
+              .setLabel("Descrição")
+              .setStyle(
+                TextInputStyle.Paragraph
+              )
+              .setValue(e.description)
 
-      const e = groups.get(id);
+          )
 
-      if (!e) return;
-
-      e.data = i.fields.getTextInputValue("data");
-      e.hora = i.fields.getTextInputValue("hora");
-      e.description = i.fields.getTextInputValue("desc");
-
-      saveGroups();
-
-      const ch = await client.channels.fetch(e.channelId);
-
-      const msg = await ch.messages.fetch(id);
-
-      return msg.edit({
-        embeds: [buildEmbed(e)],
-        components:
-          e.title === "DGAVA FULL RAID"
-            ? buildDgavaButtons(e)
-            : buildButtons(e)
-      });
-    }
-
-    /* ================= SAIR ================= */
-
-    if (i.isButton() && i.customId === "leave_event") {
-
-      const e = groups.get(i.message.id);
-
-      if (!e) return;
-
-      for (const k in e.members) {
-
-        e.members[k] = e.members[k].filter(
-          u => u.id !== i.user.id
         );
 
+        return i.showModal(modal);
       }
 
-      saveGroups();
+      /* ================= MODAL ================= */
 
-      return i.update({
-        embeds: [buildEmbed(e)],
-        components:
-          e.title === "DGAVA FULL RAID"
-            ? buildDgavaButtons(e)
-            : buildButtons(e)
-      });
-    }
+      if (
+        i.isModalSubmit() &&
+        i.customId.startsWith(
+          "modal_edit_"
+        )
+      ) {
 
-    /* ================= ENTRAR ================= */
+        const id =
+          i.customId.replace(
+            "modal_edit_",
+            ""
+          );
 
-    if (
-      i.isButton() &&
-      (
-        i.customId.startsWith("join_") ||
-        i.customId.startsWith("dgava_")
-      )
-    ) {
+        const e = groups.get(id);
 
-      const e = groups.get(i.message.id);
+        if (!e) return;
 
-      if (!e) return;
+        e.data =
+          i.fields.getTextInputValue(
+            "data"
+          );
 
-      const role = i.customId
-        .replace("join_", "")
-        .replace("dgava_", "");
+        e.hora =
+          i.fields.getTextInputValue(
+            "hora"
+          );
 
-      if (role === "DPS") {
+        e.description =
+          i.fields.getTextInputValue(
+            "desc"
+          );
+
+        saveGroups();
+
+        const ch =
+          await client.channels.fetch(
+            e.channelId
+          );
+
+        const msg =
+          await ch.messages.fetch(id);
+
+        await msg.edit({
+
+          embeds: [buildEmbed(e)],
+
+          components:
+            e.title ===
+            "DGAVA FULL RAID"
+              ? buildDgavaButtons(e)
+              : buildButtons(e)
+
+        });
+
+        return i.reply({
+          content:
+            "Evento atualizado!",
+          ephemeral: true
+        });
+      }
+
+      /* ================= SAIR ================= */
+
+      if (
+        i.isButton() &&
+        i.customId === "leave_event"
+      ) {
+
+        const e =
+          groups.get(i.message.id);
+
+        if (!e) return;
+
+        for (const k in e.members) {
+
+          e.members[k] =
+            e.members[k].filter(
+              u =>
+                u.id !== i.user.id
+            );
+
+        }
+
+        saveGroups();
+
+        return i.update({
+
+          embeds: [buildEmbed(e)],
+
+          components:
+            e.title ===
+            "DGAVA FULL RAID"
+              ? buildDgavaButtons(e)
+              : buildButtons(e)
+
+        });
+      }
+
+      /* ================= ENTRAR ================= */
+
+      if (
+
+        i.isButton()
+
+        &&
+
+        (
+          i.customId.startsWith(
+            "join_"
+          )
+
+          ||
+
+          i.customId.startsWith(
+            "dgava_"
+          )
+        )
+
+      ) {
+
+        const e =
+          groups.get(i.message.id);
+
+        if (!e) return;
+
+        const role =
+          i.customId
+            .replace("join_", "")
+            .replace("dgava_", "");
+
+        if (role === "DPS") {
+
+          if (!e.members["DPS"]) {
+            e.members["DPS"] = [];
+          }
+
+          return i.reply({
+
+            content:
+              "Escolha sua subclasse",
+
+            components: [
+              dpsMenu(i.message.id)
+            ],
+
+            ephemeral: true
+
+          });
+        }
+
+        for (const k in e.members) {
+
+          e.members[k] =
+            e.members[k].filter(
+              u =>
+                u.id !== i.user.id
+            );
+
+        }
+
+        if (!e.members[role]) {
+          e.members[role] = [];
+        }
+
+        e.members[role].push({
+          id: i.user.id
+        });
+
+        saveGroups();
+
+        return i.update({
+
+          embeds: [buildEmbed(e)],
+
+          components:
+            e.title ===
+            "DGAVA FULL RAID"
+              ? buildDgavaButtons(e)
+              : buildButtons(e)
+
+        });
+      }
+
+      /* ================= DPS ================= */
+
+      if (
+
+        i.isStringSelectMenu()
+
+        &&
+
+        i.customId.startsWith(
+          "dps_select_"
+        )
+
+      ) {
+
+        const id =
+          i.customId.replace(
+            "dps_select_",
+            ""
+          );
+
+        const e =
+          groups.get(id);
+
+        if (!e) return;
+
+        const role =
+          i.values[0];
+
+        for (const k in e.members) {
+
+          e.members[k] =
+            e.members[k].filter(
+              u =>
+                u.id !== i.user.id
+            );
+
+        }
 
         if (!e.members["DPS"]) {
           e.members["DPS"] = [];
         }
 
-        return i.reply({
-          content: "Escolha sua subclasse",
-          components: [dpsMenu(i.message.id)],
-          ephemeral: true
+        e.members["DPS"].push({
+
+          id: i.user.id,
+
+          emoji:
+            DPS_SUB[role]
+
+        });
+
+        saveGroups();
+
+        const ch =
+          await client.channels.fetch(
+            e.channelId
+          );
+
+        const msg =
+          await ch.messages.fetch(id);
+
+        await msg.edit({
+
+          embeds: [buildEmbed(e)],
+
+          components:
+            e.title ===
+            "DGAVA FULL RAID"
+              ? buildDgavaButtons(e)
+              : buildButtons(e)
+
+        });
+
+        return i.update({
+
+          content:
+            "Selecionado!",
+
+          components: []
+
         });
       }
 
-      for (const k in e.members) {
+      /* ================= /CRIAR ================= */
 
-        e.members[k] = e.members[k].filter(
-          u => u.id !== i.user.id
-        );
+      if (
 
-      }
+        i.isChatInputCommand()
 
-      if (!e.members[role]) {
-        e.members[role] = [];
-      }
+        &&
 
-      e.members[role].push({
-        id: i.user.id
-      });
+        i.commandName === "criar"
 
-      saveGroups();
+      ) {
 
-      return i.update({
-        embeds: [buildEmbed(e)],
-        components:
-          e.title === "DGAVA FULL RAID"
-            ? buildDgavaButtons(e)
-            : buildButtons(e)
-      });
-    }
+        await i.deferReply();
 
-    /* ================= DPS ================= */
+        const event = {
 
-    if (
-      i.isStringSelectMenu() &&
-      i.customId.startsWith("dps_select_")
-    ) {
+          title:
+            i.options.getString(
+              "titulo"
+            ),
 
-      const id = i.customId.replace("dps_select_", "");
+          data:
+            i.options.getString(
+              "data"
+            ),
 
-      const e = groups.get(id);
+          hora:
+            i.options.getString(
+              "hora"
+            ),
 
-      if (!e) return;
+          description:
 
-      const role = i.values[0];
+            i.options.getString(
+              "descricao"
+            )
 
-      for (const k in e.members) {
+            ||
 
-        e.members[k] = e.members[k].filter(
-          u => u.id !== i.user.id
-        );
+            "Sem descrição",
 
-      }
+          members: {},
 
-      if (!e.members["DPS"]) {
-        e.members["DPS"] = [];
-      }
+          channelId:
+            i.channelId,
 
-      e.members["DPS"].push({
-        id: i.user.id,
-        emoji: DPS_SUB[role]
-      });
+          notified: false
 
-      saveGroups();
+        };
 
-      const ch = await client.channels.fetch(e.channelId);
+        const inputClasses =
 
-      const msg = await ch.messages.fetch(id);
+          i.options.getString(
+            "classes"
+          )
 
-      await msg.edit({
-        embeds: [buildEmbed(e)],
-        components:
-          e.title === "DGAVA FULL RAID"
-            ? buildDgavaButtons(e)
-            : buildButtons(e)
-      });
+          ||
 
-      return i.update({
-        content: "Selecionado!",
-        components: []
-      });
-    }
+          "";
 
-    /* ================= /CRIAR ================= */
+        const parts =
+          inputClasses
+            .split(/[,;]+/)
+            .map(p => p.trim())
+            .filter(Boolean);
 
-    if (
-      i.isChatInputCommand() &&
-      i.commandName === "criar"
-    ) {
+        parts.forEach(part => {
 
-      await i.deferReply();
+          const emojiMatch =
+            part.match(
+              /<:[^:]+:\d+>/
+            );
 
-      const event = {
-        title: i.options.getString("titulo"),
-        data: i.options.getString("data"),
-        hora: i.options.getString("hora"),
-        description:
-          i.options.getString("descricao") ||
-          "Sem descrição",
-        members: {},
-        channelId: i.channelId,
-        notified: false
-      };
+          if (emojiMatch) {
 
-      const inputClasses =
-        i.options.getString("classes") || "";
+            const emoji =
+              emojiMatch[0];
 
-      const parts = inputClasses
-        .split(/[,;]+/)
-        .map(p => p.trim())
-        .filter(Boolean);
+            let name =
+              part
+                .replace(
+                  emoji,
+                  ""
+                )
+                .trim();
 
-      parts.forEach(part => {
+            if (!name) {
 
-        const emojiMatch =
-          part.match(/<:[^:]+:\d+>/);
+              name =
+                emoji.split(":")[1];
 
-        if (emojiMatch) {
+            }
 
-          const emoji = emojiMatch[0];
+            event.members[
+              `${emoji} ${name}`
+            ] = [];
 
-          let name = part
-            .replace(emoji, "")
-            .trim();
+          } else {
 
-          if (!name) {
-            name = emoji.split(":")[1];
+            event.members[
+              part
+            ] = [];
+
           }
 
+        });
+
+        const msg =
+          await i.editReply({
+
+            embeds: [
+              buildEmbed(event)
+            ],
+
+            components: [
+              ...buildButtons({
+                ...event,
+                messageId: "temp"
+              })
+            ]
+
+          });
+
+        const message =
+          await i.fetchReply();
+
+        event.messageId =
+          message.id;
+
+        await message.edit({
+
+          embeds: [
+            buildEmbed(event)
+          ],
+
+          components:
+            buildButtons(event)
+
+        });
+
+        groups.set(
+          message.id,
+          event
+        );
+
+        saveGroups();
+      }
+
+      /* ================= /DGAVAFULL ================= */
+
+      if (
+
+        i.isChatInputCommand()
+
+        &&
+
+        i.commandName ===
+        "dgavafull"
+
+      ) {
+
+        await i.deferReply();
+
+        const event = {
+
+          title:
+            "DGAVA FULL RAID",
+
+          data:
+            i.options.getString(
+              "data"
+            ),
+
+          hora:
+            i.options.getString(
+              "hora"
+            ),
+
+          description:
+
+            i.options.getString(
+              "descricao"
+            )
+
+            ||
+
+            "Sem descrição",
+
+          members: {},
+
+          channelId:
+            i.channelId,
+
+          notified: false
+
+        };
+
+        DGAVA_CLASSES.forEach(c => {
+
           event.members[
-            `${emoji} ${name}`
+            c.name
           ] = [];
+
+        });
+
+        await i.editReply({
+
+          embeds: [
+            buildEmbed(event)
+          ],
+
+          components: [
+            ...buildDgavaButtons({
+              ...event,
+              messageId: "temp"
+            })
+          ]
+
+        });
+
+        const message =
+          await i.fetchReply();
+
+        event.messageId =
+          message.id;
+
+        await message.edit({
+
+          embeds: [
+            buildEmbed(event)
+          ],
+
+          components:
+            buildDgavaButtons(
+              event
+            )
+
+        });
+
+        groups.set(
+          message.id,
+          event
+        );
+
+        saveGroups();
+      }
+
+    } catch (err) {
+
+      console.error(
+        "ERRO COMPLETO:"
+      );
+
+      console.error(err);
+
+      try {
+
+        if (
+          i.deferred
+          ||
+          i.replied
+        ) {
+
+          await i.followUp({
+
+            content:
+              "Ocorreu um erro.",
+
+            ephemeral: true
+
+          });
 
         } else {
 
-          const name = part;
+          await i.reply({
 
-          event.members[name] = [];
+            content:
+              "Ocorreu um erro.",
+
+            ephemeral: true
+
+          });
 
         }
 
-      });
+      } catch {}
 
-      const msg = await i.editReply({
-        embeds: [buildEmbed(event)],
-        components: buildButtons({
-          ...event,
-          messageId: "temp"
-        }),
-        fetchReply: true
-      });
-
-      event.messageId = msg.id;
-
-      await msg.edit({
-        embeds: [buildEmbed(event)],
-        components: buildButtons(event)
-      });
-
-      groups.set(msg.id, event);
-
-      saveGroups();
     }
-
-    /* ================= /DGAVAFULL ================= */
-
-    if (
-      i.isChatInputCommand() &&
-      i.commandName === "dgavafull"
-    ) {
-
-      await i.deferReply();
-
-      const event = {
-        title: "DGAVA FULL RAID",
-        data: i.options.getString("data"),
-        hora: i.options.getString("hora"),
-        description:
-          i.options.getString("descricao") ||
-          "Sem descrição",
-        members: {},
-        channelId: i.channelId,
-        notified: false
-      };
-
-      DGAVA_CLASSES.forEach(c => {
-        event.members[c.name] = [];
-      });
-
-      const msg = await i.editReply({
-        embeds: [buildEmbed(event)],
-        components: buildDgavaButtons({
-          ...event,
-          messageId: "temp"
-        }),
-        fetchReply: true
-      });
-
-      event.messageId = msg.id;
-
-      await msg.edit({
-        embeds: [buildEmbed(event)],
-        components: buildDgavaButtons(event)
-      });
-
-      groups.set(msg.id, event);
-
-      saveGroups();
-    }
-
-  } catch (err) {
-
-    console.error("ERRO COMPLETO:");
-    console.error(err);
-
-    try {
-
-      if (i.deferred || i.replied) {
-
-        await i.followUp({
-          content: "Ocorreu um erro.",
-          ephemeral: true
-        });
-
-      } else {
-
-        await i.reply({
-          content: "Ocorreu um erro.",
-          ephemeral: true
-        });
-
-      }
-
-    } catch {}
-
   }
-});
+);
 
 /* ================= CHECK ================= */
 
@@ -727,14 +1050,26 @@ function checkEvents() {
     if (e.notified) continue;
 
     const diff =
-      (
-        getEventDate(e.data, e.hora) - now
-      ) / 60000;
 
-    if (diff <= 10 && diff > 0) {
+      (
+        getEventDate(
+          e.data,
+          e.hora
+        ) - now
+      )
+
+      / 60000;
+
+    if (
+      diff <= 10
+      &&
+      diff > 0
+    ) {
 
       const ch =
-        client.channels.cache.get(e.channelId);
+        client.channels.cache.get(
+          e.channelId
+        );
 
       if (!ch) continue;
 
@@ -749,7 +1084,10 @@ function checkEvents() {
   }
 }
 
-setInterval(checkEvents, 60000);
+setInterval(
+  checkEvents,
+  60000
+);
 
 /* ================= WEB ================= */
 
@@ -759,8 +1097,12 @@ app.get("/", (req, res) => {
   res.send("Bot online");
 });
 
-app.listen(process.env.PORT || 3000);
+app.listen(
+  process.env.PORT || 3000
+);
 
 /* ================= LOGIN ================= */
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(
+  process.env.DISCORD_TOKEN
+);
