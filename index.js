@@ -60,14 +60,20 @@ function saveGroups() {
 
   fs.writeFileSync(
     "./groups.json",
-    JSON.stringify(Object.fromEntries(groups), null, 2)
+    JSON.stringify(
+      Object.fromEntries(groups),
+      null,
+      2
+    )
   );
 
 }
 
 function loadGroups() {
 
-  if (!fs.existsSync("./groups.json")) return;
+  if (!fs.existsSync("./groups.json")) {
+    return;
+  }
 
   try {
 
@@ -81,7 +87,10 @@ function loadGroups() {
 
   } catch (err) {
 
-    console.error("Erro ao carregar groups.json");
+    console.error(
+      "Erro ao carregar groups.json"
+    );
+
     console.error(err);
 
   }
@@ -97,11 +106,20 @@ function getEventDate(data, hora) {
   const [h, min] = hora.split(":");
 
   const date = new Date(
-    Date.UTC(y, m - 1, d, h, min, 0)
+    Date.UTC(
+      y,
+      m - 1,
+      d,
+      h,
+      min,
+      0
+    )
   );
 
   return new Date(
-    date.getTime() + (3 * 60 * 60 * 1000)
+    date.getTime()
+    +
+    (3 * 60 * 60 * 1000)
   );
 }
 
@@ -111,13 +129,15 @@ function getTimeRemaining(data, hora) {
 
     const diff =
       getEventDate(data, hora).getTime()
-      - Date.now();
+      -
+      Date.now();
 
     if (diff <= 0) {
       return "Evento iniciado";
     }
 
-    const minTotal = Math.floor(diff / 60000);
+    const minTotal =
+      Math.floor(diff / 60000);
 
     return `${Math.floor(minTotal / 60)}h ${minTotal % 60}m`;
 
@@ -137,8 +157,11 @@ function formatDateBR(data, hora) {
 function buildEmbed(group) {
 
   const embed = new EmbedBuilder()
+
     .setTitle(`⚔️ ${group.title}`)
+
     .setColor(0x5865F2)
+
     .setDescription(
       `📅 ${formatDateBR(group.data, group.hora)}\n⏳ ${getTimeRemaining(group.data, group.hora)}\n📝 ${group.description}`
     );
@@ -147,27 +170,38 @@ function buildEmbed(group) {
 
     let emoji = "";
 
-    const found = DGAVA_CLASSES.find(
-      c => c.name === key
-    );
+    const found =
+      DGAVA_CLASSES.find(
+        c => c.name === key
+      );
 
     if (found) {
       emoji = found.emoji;
     }
 
     embed.addFields({
+
       name: `${emoji} ${key}`,
-      value: group.members[key].length
-        ? group.members[key]
+
+      value:
+        group.members[key].length
+
+          ?
+
+          group.members[key]
             .map(
               u =>
                 `${u.emoji ? u.emoji + " " : ""}<@${u.id}>`
             )
             .join("\n")
-        : "—",
-      inline: true
-    });
 
+          :
+
+          "—",
+
+      inline: true
+
+    });
   }
 
   return embed;
@@ -179,54 +213,98 @@ function buildButtons(group) {
 
   const rows = [];
 
-  let row = new ActionRowBuilder();
+  let row =
+    new ActionRowBuilder();
 
   for (const key in group.members) {
 
     const match =
-      key.match(/<:[^:]+:(\d+)>/);
+      key.match(
+        /<:[^:]+:(\d+)>/
+      );
 
-    const btn = new ButtonBuilder()
-      .setCustomId("join_" + key)
-      .setLabel(
-        key.replace(/<:[^:]+:\d+>\s*/, "")
-      )
-      .setStyle(ButtonStyle.Primary);
+    const btn =
+      new ButtonBuilder()
+
+        .setCustomId(
+          "join_" + key
+        )
+
+        .setLabel(
+          key.replace(
+            /<:[^:]+:\d+>\s*/,
+            ""
+          )
+        )
+
+        .setStyle(
+          ButtonStyle.Primary
+        );
 
     if (match) {
-      btn.setEmoji(match[1]);
+
+      btn.setEmoji({
+        id: match[1]
+      });
+
     }
 
-    if (row.components.length === 5) {
+    if (
+      row.components.length === 5
+    ) {
 
       rows.push(row);
 
-      row = new ActionRowBuilder();
+      row =
+        new ActionRowBuilder();
 
     }
 
     row.addComponents(btn);
   }
 
-  rows.push(row);
+  if (
+    row.components.length > 0
+  ) {
+
+    rows.push(row);
+
+  }
 
   rows.push(
 
-    new ActionRowBuilder().addComponents(
+    new ActionRowBuilder()
+      .addComponents(
 
-      new ButtonBuilder()
-        .setCustomId("leave_event")
-        .setLabel("Sair")
-        .setEmoji("🚪")
-        .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
 
-      new ButtonBuilder()
-        .setCustomId("edit_" + group.messageId)
-        .setLabel("Editar")
-        .setEmoji("✏️")
-        .setStyle(ButtonStyle.Secondary)
+          .setCustomId(
+            "leave_event"
+          )
 
-    )
+          .setLabel("Sair")
+
+          .setStyle(
+            ButtonStyle.Danger
+          )
+
+          .setEmoji("🚪"),
+
+        new ButtonBuilder()
+
+          .setCustomId(
+            "edit_" + group.messageId
+          )
+
+          .setLabel("Editar")
+
+          .setStyle(
+            ButtonStyle.Secondary
+          )
+
+          .setEmoji("✏️")
+
+      )
 
   );
 
@@ -239,46 +317,83 @@ function buildDgavaButtons(group) {
 
   const rows = [];
 
-  let row = new ActionRowBuilder();
+  let row =
+    new ActionRowBuilder();
 
   for (const c of DGAVA_CLASSES) {
 
-    const id = c.emoji.match(/\d+/)[0];
+    const id =
+      c.emoji.match(/\d+/)[0];
 
-    const btn = new ButtonBuilder()
-      .setCustomId("dgava_" + c.name)
-      .setLabel(c.name)
-      .setEmoji(id)
-      .setStyle(ButtonStyle.Secondary);
+    const btn =
+      new ButtonBuilder()
 
-    if (row.components.length === 5) {
+        .setCustomId(
+          "dgava_" + c.name
+        )
+
+        .setLabel(c.name)
+
+        .setEmoji({
+          id: id
+        })
+
+        .setStyle(
+          ButtonStyle.Secondary
+        );
+
+    if (
+      row.components.length === 5
+    ) {
 
       rows.push(row);
 
-      row = new ActionRowBuilder();
+      row =
+        new ActionRowBuilder();
 
     }
 
     row.addComponents(btn);
   }
 
-  rows.push(row);
+  if (
+    row.components.length > 0
+  ) {
+
+    rows.push(row);
+
+  }
 
   rows.push(
 
-    new ActionRowBuilder().addComponents(
+    new ActionRowBuilder()
+      .addComponents(
 
-      new ButtonBuilder()
-        .setCustomId("leave_event")
-        .setEmoji("🚪")
-        .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
 
-      new ButtonBuilder()
-        .setCustomId("edit_" + group.messageId)
-        .setEmoji("✏️")
-        .setStyle(ButtonStyle.Secondary)
+          .setCustomId(
+            "leave_event"
+          )
 
-    )
+          .setEmoji("🚪")
+
+          .setStyle(
+            ButtonStyle.Danger
+          ),
+
+        new ButtonBuilder()
+
+          .setCustomId(
+            "edit_" + group.messageId
+          )
+
+          .setEmoji("✏️")
+
+          .setStyle(
+            ButtonStyle.Secondary
+          )
+
+      )
 
   );
 
@@ -289,26 +404,41 @@ function buildDgavaButtons(group) {
 
 function dpsMenu(messageId) {
 
-  return new ActionRowBuilder().addComponents(
+  return new ActionRowBuilder()
 
-    new StringSelectMenuBuilder()
-      .setCustomId("dps_select_" + messageId)
-      .setPlaceholder("Escolha sua subclasse DPS")
-      .addOptions(
+    .addComponents(
 
-        Object.entries(DPS_SUB).map(
-          ([k, v]) => ({
+      new StringSelectMenuBuilder()
 
-            label: k,
-            value: k,
-            emoji: v.match(/\d+/)[0]
-
-          })
+        .setCustomId(
+          "dps_select_" + messageId
         )
 
-      )
+        .setPlaceholder(
+          "Escolha sua subclasse DPS"
+        )
 
-  );
+        .addOptions(
+
+          Object.entries(DPS_SUB)
+            .map(
+              ([k, v]) => ({
+
+                label: k,
+
+                value: k,
+
+                emoji: {
+                  id:
+                    v.match(/\d+/)[0]
+                }
+
+              })
+            )
+
+        )
+
+    );
 }
 
 /* ================= COMANDOS ================= */
@@ -316,98 +446,178 @@ function dpsMenu(messageId) {
 const commands = [
 
   new SlashCommandBuilder()
+
     .setName("criar")
-    .setDescription("Criar evento")
+
+    .setDescription(
+      "Criar evento"
+    )
 
     .addStringOption(o =>
+
       o
+
         .setName("titulo")
-        .setDescription("Título")
+
+        .setDescription(
+          "Título"
+        )
+
         .setRequired(true)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("data")
-        .setDescription("Data")
+
+        .setDescription(
+          "Data"
+        )
+
         .setRequired(true)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("hora")
-        .setDescription("Hora")
+
+        .setDescription(
+          "Hora"
+        )
+
         .setRequired(true)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("descricao")
-        .setDescription("Descrição")
+
+        .setDescription(
+          "Descrição"
+        )
+
         .setRequired(false)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("classes")
-        .setDescription("Classes")
+
+        .setDescription(
+          "Classes"
+        )
+
         .setRequired(false)
+
     ),
 
   new SlashCommandBuilder()
+
     .setName("dgavafull")
-    .setDescription("Criar DGAVA FULL")
+
+    .setDescription(
+      "Criar DGAVA FULL"
+    )
 
     .addStringOption(o =>
+
       o
+
         .setName("data")
-        .setDescription("Data")
+
+        .setDescription(
+          "Data"
+        )
+
         .setRequired(true)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("hora")
-        .setDescription("Hora")
+
+        .setDescription(
+          "Hora"
+        )
+
         .setRequired(true)
+
     )
 
     .addStringOption(o =>
+
       o
+
         .setName("descricao")
-        .setDescription("Descrição")
+
+        .setDescription(
+          "Descrição"
+        )
+
         .setRequired(false)
+
     )
 
 ].map(c => c.toJSON());
 
 /* ================= READY ================= */
 
-client.once(Events.ClientReady, async () => {
+client.once(
+  Events.ClientReady,
+  async () => {
 
-  console.log(`Logado como ${client.user.tag}`);
-
-  const rest = new REST({
-    version: "10"
-  }).setToken(process.env.DISCORD_TOKEN);
-
-  try {
-
-    await rest.put(
-      Routes.applicationCommands(
-        client.user.id
-      ),
-      { body: commands }
+    console.log(
+      `Logado como ${client.user.tag}`
     );
 
-    console.log("Comandos registrados");
+    const rest =
+      new REST({
+        version: "10"
+      })
+        .setToken(
+          process.env.DISCORD_TOKEN
+        );
 
-  } catch (err) {
+    try {
 
-    console.error(err);
+      await rest.put(
 
+        Routes.applicationCommands(
+          client.user.id
+        ),
+
+        {
+          body: commands
+        }
+
+      );
+
+      console.log(
+        "Comandos registrados"
+      );
+
+    } catch (err) {
+
+      console.error(err);
+
+    }
   }
-});
+);
 
 /* ================= INTERAÇÕES ================= */
 
@@ -420,60 +630,109 @@ client.on(
       /* ================= EDITAR ================= */
 
       if (
-        i.isButton() &&
-        i.customId.startsWith("edit_")
+
+        i.isButton()
+
+        &&
+
+        i.customId.startsWith(
+          "edit_"
+        )
+
       ) {
 
         const id =
-          i.customId.replace("edit_", "");
+          i.customId.replace(
+            "edit_",
+            ""
+          );
 
-        const e = groups.get(id);
+        const e =
+          groups.get(id);
 
         if (!e) return;
 
-        const modal = new ModalBuilder()
-          .setCustomId(
-            "modal_edit_" + id
-          )
-          .setTitle("Editar Evento");
+        const modal =
+          new ModalBuilder()
+
+            .setCustomId(
+              "modal_edit_" + id
+            )
+
+            .setTitle(
+              "Editar Evento"
+            );
 
         modal.addComponents(
 
-          new ActionRowBuilder().addComponents(
+          new ActionRowBuilder()
+            .addComponents(
 
-            new TextInputBuilder()
-              .setCustomId("data")
-              .setLabel("Data")
-              .setStyle(
-                TextInputStyle.Short
-              )
-              .setValue(e.data)
+              new TextInputBuilder()
 
-          ),
+                .setCustomId(
+                  "data"
+                )
 
-          new ActionRowBuilder().addComponents(
+                .setLabel(
+                  "Data"
+                )
 
-            new TextInputBuilder()
-              .setCustomId("hora")
-              .setLabel("Hora")
-              .setStyle(
-                TextInputStyle.Short
-              )
-              .setValue(e.hora)
+                .setStyle(
+                  TextInputStyle.Short
+                )
 
-          ),
+                .setValue(
+                  e.data
+                )
 
-          new ActionRowBuilder().addComponents(
+            ),
 
-            new TextInputBuilder()
-              .setCustomId("desc")
-              .setLabel("Descrição")
-              .setStyle(
-                TextInputStyle.Paragraph
-              )
-              .setValue(e.description)
+          new ActionRowBuilder()
+            .addComponents(
 
-          )
+              new TextInputBuilder()
+
+                .setCustomId(
+                  "hora"
+                )
+
+                .setLabel(
+                  "Hora"
+                )
+
+                .setStyle(
+                  TextInputStyle.Short
+                )
+
+                .setValue(
+                  e.hora
+                )
+
+            ),
+
+          new ActionRowBuilder()
+            .addComponents(
+
+              new TextInputBuilder()
+
+                .setCustomId(
+                  "desc"
+                )
+
+                .setLabel(
+                  "Descrição"
+                )
+
+                .setStyle(
+                  TextInputStyle.Paragraph
+                )
+
+                .setValue(
+                  e.description
+                )
+
+            )
 
         );
 
@@ -483,10 +742,15 @@ client.on(
       /* ================= MODAL ================= */
 
       if (
-        i.isModalSubmit() &&
+
+        i.isModalSubmit()
+
+        &&
+
         i.customId.startsWith(
           "modal_edit_"
         )
+
       ) {
 
         const id =
@@ -495,7 +759,8 @@ client.on(
             ""
           );
 
-        const e = groups.get(id);
+        const e =
+          groups.get(id);
 
         if (!e) return;
 
@@ -526,28 +791,46 @@ client.on(
 
         await msg.edit({
 
-          embeds: [buildEmbed(e)],
+          embeds: [
+            buildEmbed(e)
+          ],
 
           components:
+
             e.title ===
             "DGAVA FULL RAID"
-              ? buildDgavaButtons(e)
-              : buildButtons(e)
+
+              ?
+
+              buildDgavaButtons(e)
+
+              :
+
+              buildButtons(e)
 
         });
 
         return i.reply({
+
           content:
             "Evento atualizado!",
+
           ephemeral: true
+
         });
       }
 
       /* ================= SAIR ================= */
 
       if (
-        i.isButton() &&
-        i.customId === "leave_event"
+
+        i.isButton()
+
+        &&
+
+        i.customId ===
+        "leave_event"
+
       ) {
 
         const e =
@@ -569,13 +852,22 @@ client.on(
 
         return i.update({
 
-          embeds: [buildEmbed(e)],
+          embeds: [
+            buildEmbed(e)
+          ],
 
           components:
+
             e.title ===
             "DGAVA FULL RAID"
-              ? buildDgavaButtons(e)
-              : buildButtons(e)
+
+              ?
+
+              buildDgavaButtons(e)
+
+              :
+
+              buildButtons(e)
 
         });
       }
@@ -609,13 +901,25 @@ client.on(
 
         const role =
           i.customId
-            .replace("join_", "")
-            .replace("dgava_", "");
+
+            .replace(
+              "join_",
+              ""
+            )
+
+            .replace(
+              "dgava_",
+              ""
+            );
 
         if (role === "DPS") {
 
-          if (!e.members["DPS"]) {
+          if (
+            !e.members["DPS"]
+          ) {
+
             e.members["DPS"] = [];
+
           }
 
           return i.reply({
@@ -624,7 +928,9 @@ client.on(
               "Escolha sua subclasse",
 
             components: [
-              dpsMenu(i.message.id)
+              dpsMenu(
+                i.message.id
+              )
             ],
 
             ephemeral: true
@@ -642,25 +948,40 @@ client.on(
 
         }
 
-        if (!e.members[role]) {
+        if (
+          !e.members[role]
+        ) {
+
           e.members[role] = [];
+
         }
 
         e.members[role].push({
+
           id: i.user.id
+
         });
 
         saveGroups();
 
         return i.update({
 
-          embeds: [buildEmbed(e)],
+          embeds: [
+            buildEmbed(e)
+          ],
 
           components:
+
             e.title ===
             "DGAVA FULL RAID"
-              ? buildDgavaButtons(e)
-              : buildButtons(e)
+
+              ?
+
+              buildDgavaButtons(e)
+
+              :
+
+              buildButtons(e)
 
         });
       }
@@ -703,8 +1024,12 @@ client.on(
 
         }
 
-        if (!e.members["DPS"]) {
+        if (
+          !e.members["DPS"]
+        ) {
+
           e.members["DPS"] = [];
+
         }
 
         e.members["DPS"].push({
@@ -728,13 +1053,22 @@ client.on(
 
         await msg.edit({
 
-          embeds: [buildEmbed(e)],
+          embeds: [
+            buildEmbed(e)
+          ],
 
           components:
+
             e.title ===
             "DGAVA FULL RAID"
-              ? buildDgavaButtons(e)
-              : buildButtons(e)
+
+              ?
+
+              buildDgavaButtons(e)
+
+              :
+
+              buildButtons(e)
 
         });
 
@@ -756,7 +1090,8 @@ client.on(
 
         &&
 
-        i.commandName === "criar"
+        i.commandName ===
+        "criar"
 
       ) {
 
@@ -809,9 +1144,15 @@ client.on(
           "";
 
         const parts =
+
           inputClasses
+
             .split(/[,;]+/)
-            .map(p => p.trim())
+
+            .map(
+              p => p.trim()
+            )
+
             .filter(Boolean);
 
         parts.forEach(part => {
@@ -837,7 +1178,8 @@ client.on(
             if (!name) {
 
               name =
-                emoji.split(":")[1];
+                emoji
+                  .split(":")[1];
 
             }
 
@@ -855,21 +1197,19 @@ client.on(
 
         });
 
-        const msg =
-          await i.editReply({
+        await i.editReply({
 
-            embeds: [
-              buildEmbed(event)
-            ],
+          embeds: [
+            buildEmbed(event)
+          ],
 
-            components: [
-              ...buildButtons({
-                ...event,
-                messageId: "temp"
-              })
-            ]
+          components:
+            buildButtons({
+              ...event,
+              messageId: "temp"
+            })
 
-          });
+        });
 
         const message =
           await i.fetchReply();
@@ -959,12 +1299,11 @@ client.on(
             buildEmbed(event)
           ],
 
-          components: [
-            ...buildDgavaButtons({
+          components:
+            buildDgavaButtons({
               ...event,
               messageId: "temp"
             })
-          ]
 
         });
 
@@ -1047,7 +1386,9 @@ function checkEvents() {
 
   for (const e of groups.values()) {
 
-    if (e.notified) continue;
+    if (e.notified) {
+      continue;
+    }
 
     const diff =
 
@@ -1055,15 +1396,23 @@ function checkEvents() {
         getEventDate(
           e.data,
           e.hora
-        ) - now
+        )
+
+        -
+
+        now
       )
 
       / 60000;
 
     if (
+
       diff <= 10
+
       &&
+
       diff > 0
+
     ) {
 
       const ch =
@@ -1071,7 +1420,9 @@ function checkEvents() {
           e.channelId
         );
 
-      if (!ch) continue;
+      if (!ch) {
+        continue;
+      }
 
       ch.send(
         `@everyone ⏰ Evento **${e.title}** começa em 10 minutos!`
@@ -1093,9 +1444,12 @@ setInterval(
 
 const app = express();
 
-app.get("/", (req, res) => {
-  res.send("Bot online");
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.send("Bot online");
+  }
+);
 
 app.listen(
   process.env.PORT || 3000
