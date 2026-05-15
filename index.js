@@ -111,6 +111,7 @@ function buildEmbed(group) {
     );
 
   for (const key in group.members) {
+
     let emoji = "";
 
     const found = DGAVA_CLASSES.find(c => c.name === key);
@@ -136,11 +137,13 @@ function buildEmbed(group) {
 /* ================= BOTÕES ================= */
 
 function buildButtons(group) {
+
   const rows = [];
 
   let row = new ActionRowBuilder();
 
   for (const key in group.members) {
+
     const match = key.match(/<:[^:]+:(\d+)>/);
 
     const btn = new ButtonBuilder()
@@ -164,6 +167,7 @@ function buildButtons(group) {
 
   rows.push(
     new ActionRowBuilder().addComponents(
+
       new ButtonBuilder()
         .setCustomId("leave_event")
         .setLabel("Sair")
@@ -175,6 +179,7 @@ function buildButtons(group) {
         .setLabel("Editar")
         .setStyle(ButtonStyle.Secondary)
         .setEmoji("✏️")
+
     )
   );
 
@@ -184,11 +189,13 @@ function buildButtons(group) {
 /* ================= DGAVA BUTTONS ================= */
 
 function buildDgavaButtons(group) {
+
   const rows = [];
 
   let row = new ActionRowBuilder();
 
   for (const c of DGAVA_CLASSES) {
+
     const id = c.emoji.match(/\d+/)[0];
 
     const btn = new ButtonBuilder()
@@ -209,6 +216,7 @@ function buildDgavaButtons(group) {
 
   rows.push(
     new ActionRowBuilder().addComponents(
+
       new ButtonBuilder()
         .setCustomId("leave_event")
         .setEmoji("🚪")
@@ -218,6 +226,7 @@ function buildDgavaButtons(group) {
         .setCustomId("edit_" + group.messageId)
         .setEmoji("✏️")
         .setStyle(ButtonStyle.Secondary)
+
     )
   );
 
@@ -227,6 +236,7 @@ function buildDgavaButtons(group) {
 /* ================= DPS MENU ================= */
 
 function dpsMenu(messageId) {
+
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("dps_select_" + messageId)
@@ -244,33 +254,39 @@ function dpsMenu(messageId) {
 /* ================= COMANDOS ================= */
 
 const commands = [
+
   new SlashCommandBuilder()
     .setName("criar")
     .setDescription("Criar evento")
+
     .addStringOption(o =>
       o
         .setName("titulo")
         .setDescription("Título")
         .setRequired(true)
     )
+
     .addStringOption(o =>
       o
         .setName("data")
         .setDescription("Data")
         .setRequired(true)
     )
+
     .addStringOption(o =>
       o
         .setName("hora")
         .setDescription("Hora")
         .setRequired(true)
     )
+
     .addStringOption(o =>
       o
         .setName("descricao")
         .setDescription("Descrição")
         .setRequired(false)
     )
+
     .addStringOption(o =>
       o
         .setName("classes")
@@ -281,51 +297,63 @@ const commands = [
   new SlashCommandBuilder()
     .setName("dgavafull")
     .setDescription("Criar DGAVA FULL")
+
     .addStringOption(o =>
       o
         .setName("data")
         .setDescription("Data")
         .setRequired(true)
     )
+
     .addStringOption(o =>
       o
         .setName("hora")
         .setDescription("Hora")
         .setRequired(true)
     )
+
     .addStringOption(o =>
       o
         .setName("descricao")
         .setDescription("Descrição")
         .setRequired(false)
     )
+
 ].map(c => c.toJSON());
 
 client.once(Events.ClientReady, async () => {
+
   console.log(`Logado como ${client.user.tag}`);
 
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  const rest = new REST({ version: "10" })
+    .setToken(process.env.DISCORD_TOKEN);
 
   try {
+
     await rest.put(
       Routes.applicationCommands(client.user.id),
       { body: commands }
     );
 
     console.log("Comandos registrados");
+
   } catch (err) {
+
     console.error(err);
+
   }
 });
 
 /* ================= INTERAÇÕES ================= */
 
 client.on("interactionCreate", async i => {
+
   try {
 
     /* ================= EDITAR ================= */
 
     if (i.isButton() && i.customId.startsWith("edit_")) {
+
       const id = i.customId.replace("edit_", "");
 
       const e = groups.get(id);
@@ -337,6 +365,7 @@ client.on("interactionCreate", async i => {
         .setTitle("Editar Evento");
 
       modal.addComponents(
+
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
             .setCustomId("data")
@@ -360,6 +389,7 @@ client.on("interactionCreate", async i => {
             .setStyle(TextInputStyle.Paragraph)
             .setValue(e.description)
         )
+
       );
 
       return i.showModal(modal);
@@ -368,6 +398,7 @@ client.on("interactionCreate", async i => {
     /* ================= MODAL ================= */
 
     if (i.isModalSubmit() && i.customId.startsWith("modal_edit_")) {
+
       const id = i.customId.replace("modal_edit_", "");
 
       const e = groups.get(id);
@@ -396,12 +427,17 @@ client.on("interactionCreate", async i => {
     /* ================= SAIR ================= */
 
     if (i.isButton() && i.customId === "leave_event") {
+
       const e = groups.get(i.message.id);
 
       if (!e) return;
 
       for (const k in e.members) {
-        e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+
+        e.members[k] = e.members[k].filter(
+          u => u.id !== i.user.id
+        );
+
       }
 
       saveGroups();
@@ -424,6 +460,7 @@ client.on("interactionCreate", async i => {
         i.customId.startsWith("dgava_")
       )
     ) {
+
       const e = groups.get(i.message.id);
 
       if (!e) return;
@@ -433,6 +470,11 @@ client.on("interactionCreate", async i => {
         .replace("dgava_", "");
 
       if (role === "DPS") {
+
+        if (!e.members["DPS"]) {
+          e.members["DPS"] = [];
+        }
+
         return i.reply({
           content: "Escolha sua subclasse",
           components: [dpsMenu(i.message.id)],
@@ -441,7 +483,15 @@ client.on("interactionCreate", async i => {
       }
 
       for (const k in e.members) {
-        e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+
+        e.members[k] = e.members[k].filter(
+          u => u.id !== i.user.id
+        );
+
+      }
+
+      if (!e.members[role]) {
+        e.members[role] = [];
       }
 
       e.members[role].push({
@@ -465,6 +515,7 @@ client.on("interactionCreate", async i => {
       i.isStringSelectMenu() &&
       i.customId.startsWith("dps_select_")
     ) {
+
       const id = i.customId.replace("dps_select_", "");
 
       const e = groups.get(id);
@@ -474,7 +525,15 @@ client.on("interactionCreate", async i => {
       const role = i.values[0];
 
       for (const k in e.members) {
-        e.members[k] = e.members[k].filter(u => u.id !== i.user.id);
+
+        e.members[k] = e.members[k].filter(
+          u => u.id !== i.user.id
+        );
+
+      }
+
+      if (!e.members["DPS"]) {
+        e.members["DPS"] = [];
       }
 
       e.members["DPS"].push({
@@ -504,7 +563,10 @@ client.on("interactionCreate", async i => {
 
     /* ================= /CRIAR ================= */
 
-    if (i.isChatInputCommand() && i.commandName === "criar") {
+    if (
+      i.isChatInputCommand() &&
+      i.commandName === "criar"
+    ) {
 
       await i.deferReply();
 
@@ -512,13 +574,16 @@ client.on("interactionCreate", async i => {
         title: i.options.getString("titulo"),
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
-        description: i.options.getString("descricao") || "Sem descrição",
+        description:
+          i.options.getString("descricao") ||
+          "Sem descrição",
         members: {},
         channelId: i.channelId,
         notified: false
       };
 
-      const inputClasses = i.options.getString("classes") || "";
+      const inputClasses =
+        i.options.getString("classes") || "";
 
       const parts = inputClasses
         .split(/[,;]+/)
@@ -527,22 +592,31 @@ client.on("interactionCreate", async i => {
 
       parts.forEach(part => {
 
-        const emojiMatch = part.match(/<:[^:]+:\d+>/);
+        const emojiMatch =
+          part.match(/<:[^:]+:\d+>/);
 
         if (emojiMatch) {
+
           const emoji = emojiMatch[0];
 
-          let name = part.replace(emoji, "").trim();
+          let name = part
+            .replace(emoji, "")
+            .trim();
 
           if (!name) {
             name = emoji.split(":")[1];
           }
 
-          event.members[`${emoji} ${name}`] = [];
+          event.members[
+            `${emoji} ${name}`
+          ] = [];
+
         } else {
+
           const name = part;
 
           event.members[name] = [];
+
         }
 
       });
@@ -570,7 +644,10 @@ client.on("interactionCreate", async i => {
 
     /* ================= /DGAVAFULL ================= */
 
-    if (i.isChatInputCommand() && i.commandName === "dgavafull") {
+    if (
+      i.isChatInputCommand() &&
+      i.commandName === "dgavafull"
+    ) {
 
       await i.deferReply();
 
@@ -578,7 +655,9 @@ client.on("interactionCreate", async i => {
         title: "DGAVA FULL RAID",
         data: i.options.getString("data"),
         hora: i.options.getString("hora"),
-        description: i.options.getString("descricao") || "Sem descrição",
+        description:
+          i.options.getString("descricao") ||
+          "Sem descrição",
         members: {},
         channelId: i.channelId,
         notified: false
@@ -610,42 +689,52 @@ client.on("interactionCreate", async i => {
     }
 
   } catch (err) {
+
+    console.error("ERRO COMPLETO:");
     console.error(err);
 
     try {
 
       if (i.deferred || i.replied) {
+
         await i.followUp({
           content: "Ocorreu um erro.",
           ephemeral: true
         });
+
       } else {
+
         await i.reply({
           content: "Ocorreu um erro.",
           ephemeral: true
         });
+
       }
 
     } catch {}
+
   }
 });
 
 /* ================= CHECK ================= */
 
 function checkEvents() {
+
   const now = new Date();
 
   for (const e of groups.values()) {
 
     if (e.notified) continue;
 
-    const diff = (
-      getEventDate(e.data, e.hora) - now
-    ) / 60000;
+    const diff =
+      (
+        getEventDate(e.data, e.hora) - now
+      ) / 60000;
 
     if (diff <= 10 && diff > 0) {
 
-      const ch = client.channels.cache.get(e.channelId);
+      const ch =
+        client.channels.cache.get(e.channelId);
 
       if (!ch) continue;
 
